@@ -1,3 +1,4 @@
+
 export interface BlockNode {
   id: string; // unique identifier
   name: string; // module name
@@ -7,6 +8,36 @@ export interface BlockNode {
   endLine: number; // line number where the module declaration ends
   children: BlockNode[]; // nested modules
   imports: string[]; // list of 'use' imports detected (simple strings for now)
+  // New Semantic Properties
+  data?: BlockData[]; // Structs owned by this block
+  inputs?: BlockIO[]; // What this block consumes
+  outputs?: BlockIO[]; // What this block produces
+}
+
+export interface BlockData {
+  name: string;
+  isPublic: boolean;
+  type: string; // e.g., 'struct', 'enum'
+}
+
+export interface BlockIO {
+  name: string; // function name or variable
+  type: string; // type signature
+  args?: string; // function arguments
+  isMutable: boolean; // &mut T
+  isReference: boolean; // &T
+}
+
+export interface Connection {
+  from: string; // Source Block ID
+  to: string; // Target Block ID
+  type: 'immutable' | 'mutable' | 'ownership' | 'conflict';
+  label?: string; // e.g., variable name
+}
+
+export interface BlockGraph {
+  nodes: BlockNode[];
+  edges: Connection[];
 }
 
 export interface Conflict {

@@ -1,5 +1,8 @@
 mod core;
 mod utils;
-mod legacy; // Missing file
 
-static mut GLOBAL_COUNTER: i32 = 0; // Unsafe pattern
+use crate::core::Data;
+
+pub fn main_loop(d: &mut Data) {
+    d.process();
+}
