@@ -5,6 +5,7 @@ import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
 import { AiContextGenerator } from './generators/ai-context-generator';
+import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
 
@@ -106,6 +107,14 @@ async function main() {
         // 2. Build Graph
         const builder = new GraphBuilder();
         const graph = builder.build(result.root, maxDepth);
+
+        // 2b. Global Analysis
+        const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+        if (graph.conflicts) {
+            graph.conflicts.push(...globalConflicts);
+        } else {
+            graph.conflicts = globalConflicts;
+        }
 
         console.log('\n--- Block Graph ---');
         console.log(`Nodes: ${graph.nodes.length}`);

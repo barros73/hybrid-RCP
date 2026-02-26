@@ -7,6 +7,7 @@ import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
 import { AiContextGenerator } from './generators/ai-context-generator';
+import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
 import { TextDecoder, TextEncoder } from 'util';
 import { BlockGraph } from './types';
 import { IUserInterface } from './ui-interface';
@@ -315,6 +316,14 @@ export function activate(context: vscode.ExtensionContext) {
             // 1. Build Graph
             const builder = new GraphBuilder();
             const graph = builder.build(result.root, maxDepth);
+
+            // 1b. Run Global Conflict Analysis (Cross-File)
+            const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+            if (graph.conflicts) {
+                graph.conflicts.push(...globalConflicts);
+            } else {
+                graph.conflicts = globalConflicts;
+            }
 
             // 2. Generate JSON Structure
             const structureJson = JSON.stringify(graph, null, 2);

@@ -47,6 +47,7 @@ export class HybridManager {
         const candidates = [
             'main.cpp', 'src/main.cpp',
             'main.c', 'src/main.c',
+            'file1.c', 'file2.c', // For testing
             'main.go', 'cmd/main.go',
             'index.js', 'src/index.js',
             'main.py', 'app.py'
