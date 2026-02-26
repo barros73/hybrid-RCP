@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ParserFactory } from './parsers/factory';
+import { HybridManager } from './parsers/hybrid-manager';
 import { IFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
@@ -240,7 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
         const rootPath = workspaceFolders[0].uri.fsPath;
         const fsAdapter = new VSCodeFileSystem();
 
-        // Detect entry point
+        // Detect entry point or Hybrid Mode
         const candidates = [
             path.join(rootPath, 'src', 'lib.rs'),
             path.join(rootPath, 'src', 'main.rs'),
@@ -259,35 +260,27 @@ export function activate(context: vscode.ExtensionContext) {
         ];
 
         let entryPath: string | undefined;
-        const foundCandidates = [];
+        let isHybrid = false;
 
+        const foundCandidates = [];
         for (const p of candidates) {
             if (await fsAdapter.exists(p)) {
                 foundCandidates.push(p);
             }
         }
 
-        if (foundCandidates.length === 1) {
-            entryPath = foundCandidates[0];
-        } else if (foundCandidates.length > 1) {
-            entryPath = await vscode.window.showQuickPick(foundCandidates, { placeHolder: 'Select Entry File' });
-        }
+        // Add Hybrid Option
+        const quickPickItems = foundCandidates.map(p => ({ label: path.relative(rootPath, p), path: p }));
+        quickPickItems.unshift({ label: '🌐 Auto-Detect Hybrid Workspace (Multi-Language)', path: 'HYBRID' });
 
-        if (!entryPath) {
-             const uris = await vscode.window.showOpenDialog({
-                canSelectFiles: true,
-                canSelectFolders: false,
-                canSelectMany: false,
-                defaultUri: vscode.Uri.file(rootPath),
-                openLabel: 'Select Entry File'
-            });
-            if (uris && uris.length > 0) {
-                entryPath = uris[0].fsPath;
-            }
-        }
+        const selected = await vscode.window.showQuickPick(quickPickItems, { placeHolder: 'Select Entry Point or Hybrid Mode' });
 
-        if (!entryPath) {
-             return;
+        if (!selected) return;
+
+        if (selected.path === 'HYBRID') {
+            isHybrid = true;
+        } else {
+            entryPath = selected.path;
         }
 
         // 0. Prompt for Analysis Depth
@@ -306,11 +299,18 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        vscode.window.showInformationMessage(`Analyzing project structure (${path.basename(entryPath)})...`);
+        vscode.window.showInformationMessage(`Analyzing project structure...`);
 
         try {
-            const parser = ParserFactory.getParserForFile(entryPath, fsAdapter);
-            const result = await parser.parse(entryPath);
+            let result;
+            if (isHybrid) {
+                const manager = new HybridManager(fsAdapter);
+                result = await manager.parse(rootPath);
+            } else {
+                if (!entryPath) return; // Should not happen
+                const parser = ParserFactory.getParserForFile(entryPath, fsAdapter);
+                result = await parser.parse(entryPath);
+            }
 
             // 1. Build Graph
             const builder = new GraphBuilder();
