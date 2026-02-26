@@ -12,10 +12,39 @@ async function main() {
         console.error('Usage:');
         console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs>');
         console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder>');
+        console.error('  Lock:    ts-node src/cli.ts analyze-lock <path-to-Cargo.lock>');
         process.exit(1);
     }
 
     const command = args[0];
+
+    if (command === 'analyze-lock') {
+        const lockPath = path.resolve(args[1]);
+        const cargoManager = new CargoManager(nodeFileSystem);
+
+        console.log(`Analyzing Cargo.lock at: ${lockPath}`);
+        try {
+            const depMap = await cargoManager.analyzeLockFile(lockPath);
+            const conflicts = cargoManager.detectVersionConflicts(depMap);
+
+            console.log(`\n📦 Found ${depMap.size} unique dependencies.`);
+
+            if (conflicts.length > 0) {
+                console.log(`\n⚠️  Found ${conflicts.length} version conflicts:`);
+                conflicts.forEach(c => {
+                    console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
+                    if (c.suggestedFix) {
+                        console.log(`  💡 Fix: ${c.suggestedFix}`);
+                    }
+                });
+            } else {
+                console.log('✅ No version conflicts detected.');
+            }
+        } catch (err: any) {
+            console.error(`Error analyzing lock file: ${err.message}`);
+        }
+        return;
+    }
 
     if (command === 'create') {
         if (args.length < 4) {

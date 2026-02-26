@@ -1,10 +1,61 @@
 import { IFileSystem } from './rust-parser';
+import { Conflict } from './types';
 
 export class CargoManager {
     private fileSystem: IFileSystem;
 
     constructor(fileSystem: IFileSystem) {
         this.fileSystem = fileSystem;
+    }
+
+    async analyzeLockFile(lockPath: string): Promise<Map<string, string[]>> {
+        if (!await this.fileSystem.exists(lockPath)) {
+            console.warn(`Cargo.lock not found at ${lockPath}`);
+            return new Map();
+        }
+
+        const content = await this.fileSystem.readFile(lockPath);
+        const dependencyMap = new Map<string, string[]>();
+
+        // Simple TOML parser for [[package]] sections
+        // Note: This is a heuristic parser. A robust solution would use a TOML library.
+        const packageRegex = /\[\[package\]\]\s*name\s*=\s*"([^"]+)"\s*version\s*=\s*"([^"]+)"/g;
+
+        let match;
+        while ((match = packageRegex.exec(content)) !== null) {
+            const name = match[1];
+            const version = match[2];
+
+            if (!dependencyMap.has(name)) {
+                dependencyMap.set(name, []);
+            }
+            dependencyMap.get(name)!.push(version);
+        }
+
+        return dependencyMap;
+    }
+
+    detectVersionConflicts(dependencyMap: Map<string, string[]>): Conflict[] {
+        const conflicts: Conflict[] = [];
+
+        dependencyMap.forEach((versions, name) => {
+            if (versions.length > 1) {
+                // Deduplicate versions
+                const uniqueVersions = Array.from(new Set(versions));
+                if (uniqueVersions.length > 1) {
+                    conflicts.push({
+                        id: `dependency-conflict-${name}`,
+                        description: `Multiple versions of crate '${name}' detected in Cargo.lock: ${uniqueVersions.join(', ')}. This can increase build times and binary size.`,
+                        location: { file: 'Cargo.lock', line: 0 },
+                        severity: 'warning',
+                        category: 'version-mismatch',
+                        suggestedFix: `Check 'Cargo.toml' dependencies and run 'cargo update -p ${name}' to try deduping.`
+                    });
+                }
+            }
+        });
+
+        return conflicts;
     }
 
     async addDependency(cargoPath: string, name: string, version: string, features: string[] = []): Promise<void> {

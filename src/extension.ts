@@ -354,6 +354,47 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(createBlockDisposable);
+
+    let analyzeLockDisposable = vscode.commands.registerCommand('hybrid-rst.analyzeLock', async () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) return;
+
+        const rootPath = workspaceFolders[0].uri.fsPath;
+        const lockPath = path.join(rootPath, 'Cargo.lock');
+
+        const fsAdapter = new VSCodeFileSystem();
+        const cargoManager = new CargoManager(fsAdapter);
+
+        try {
+            const depMap = await cargoManager.analyzeLockFile(lockPath);
+            const conflicts = cargoManager.detectVersionConflicts(depMap);
+
+            if (conflicts.length > 0) {
+                const message = `Found ${conflicts.length} version conflicts in Cargo.lock. Check conflicts-report.md?`;
+                const selection = await vscode.window.showWarningMessage(message, 'Yes', 'No');
+
+                if (selection === 'Yes') {
+                    // Update the report file
+                    let reportContent = '# Cargo Lock Analysis\n\n';
+                    conflicts.forEach(c => {
+                        reportContent += `## ${c.id}\n${c.description}\n**Fix:** ${c.suggestedFix}\n\n`;
+                    });
+
+                    const reportPath = path.join(rootPath, 'lock-conflicts.md');
+                    await fsAdapter.writeFile(reportPath, reportContent);
+                    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(reportPath));
+                    await vscode.window.showTextDocument(doc);
+                }
+            } else {
+                vscode.window.showInformationMessage(`Cargo.lock analysis passed. ${depMap.size} unique dependencies checked.`);
+            }
+
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`Error analyzing lock file: ${err.message}`);
+        }
+    });
+
+    context.subscriptions.push(analyzeLockDisposable);
 }
 
 export function deactivate() {}

@@ -42,7 +42,10 @@ Easily create new modules (Sub-blocks) directly from the IDE or CLI. The system 
 *   Generates a boilerplate template with struct and constructor.
 *   **AI Audit:** Automatically detects the purpose of the block (e.g., "database", "api") and adds necessary dependencies (like `sqlx`, `tokio`, `axum`) to `Cargo.toml`.
 
-### 2. Dynamic Dependency Viewer
+### 2. Dependency Lock Analysis
+The system scans `Cargo.lock` to find "invisible" conflicts, such as multiple versions of the same crate (e.g., `syn` 1.0 vs 2.0). This helps reduce binary bloat and compilation times.
+
+### 3. Dynamic Dependency Viewer
 A sidebar panel that generates a module graph. The AI analyzes the call graph and translates compiler errors into visual alerts.
 
 **Now Available (CLI & VS Code):**
