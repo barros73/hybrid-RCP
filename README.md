@@ -35,8 +35,25 @@ Inspired by *CodeBlocks*, RustFlow introduces a visual hierarchy where **Ownersh
 
 ## 🚀 Key Features (MVP)
 
-### 1. Dynamic Dependency Viewer
+### 1. Block Creation & Management
+Easily create new modules (Sub-blocks) directly from the IDE or CLI. The system automatically:
+*   Creates the file (`.rs`) or folder module (`mod.rs`).
+*   Updates the parent module with `pub mod block_name;`.
+*   Generates a boilerplate template with struct and constructor.
+*   **AI Audit:** Automatically detects the purpose of the block (e.g., "database", "api") and adds necessary dependencies (like `sqlx`, `tokio`, `axum`) to `Cargo.toml`.
+
+### 2. Dependency Lock Analysis
+The system scans `Cargo.lock` to find "invisible" conflicts, such as multiple versions of the same crate (e.g., `syn` 1.0 vs 2.0). This helps reduce binary bloat and compilation times.
+
+### 3. Dynamic Dependency Viewer
 A sidebar panel that generates a module graph. The AI analyzes the call graph and translates compiler errors into visual alerts.
+
+**Now Available (CLI & VS Code):**
+*   **Traffic Light System:**
+    *   **Green:** Immutable usage (`&T`)
+    *   **Yellow:** Mutable usage (`&mut T`)
+    *   **Red:** Ownership Conflict (Multiple `&mut T`)
+*   **Conflict Resolution:** The system detects when multiple blocks attempt to mutate the same data and suggests fixes like `RefCell<T>` or `Arc<Mutex<T>>`.
 
 ### 2. AI Architect (Integration)
 Leveraging LLM models (like Gemini/Jules), the extension:
@@ -58,9 +75,12 @@ Modifying the visual schema updates the Rust code. Modifying the code updates th
 ---
 
 ## 📌 Roadmap
-- [ ] **Phase 1:** Static visualization of the `mod` structure of an existing project (Current Focus).
-- [ ] **Phase 2:** Creation of files and modules via block interface (Drag & Drop).
-- [ ] **Phase 3:** AI integration for `Cargo.toml` auto-compilation.
+- [x] **Phase 1:** Static visualization of the `mod` structure of an existing project.
+- [x] **Phase 1.5:** Traffic Light System (Green/Yellow/Red) for ownership visualization.
+- [x] **Phase 1.8:** Conflict Detection & Smart Pointer Suggestions (RefCell/Arc<Mutex>).
+- [x] **Phase 2:** Creation of files and modules via block interface (Backend & CLI).
+- [ ] **Phase 2.5:** Drag & Drop Interface for block creation.
+- [x] **Phase 3:** AI integration for `Cargo.toml` auto-compilation (Partial: AI Audit for new blocks).
 - [ ] **Phase 4:** Visual Ownership Analyzer (Highlighting potential compilation errors).
 
 ---

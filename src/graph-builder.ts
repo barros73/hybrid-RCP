@@ -1,24 +1,30 @@
 
-import { BlockNode, BlockGraph, Connection } from './types';
+import { BlockNode, BlockGraph, Connection, Conflict } from './types';
 
 export class GraphBuilder {
-    build(root: BlockNode): BlockGraph {
+    build(root: BlockNode, maxDepth: number = Infinity): BlockGraph {
         const nodes: BlockNode[] = [];
         const edges: Connection[] = [];
 
-        // 1. Flatten the tree into nodes
-        this.traverse(root, nodes);
+        // 1. Flatten the tree into nodes (with depth limit)
+        this.traverse(root, nodes, 0, maxDepth);
 
         // 2. Generate Edges (Connections)
         this.generateEdges(nodes, edges);
 
-        return { nodes, edges };
+        // 3. Detect Conflicts (Red Lines)
+        const conflicts = this.detectConflicts(edges, nodes);
+
+        return { nodes, edges, conflicts };
     }
 
-    private traverse(node: BlockNode, list: BlockNode[]) {
+    private traverse(node: BlockNode, list: BlockNode[], currentDepth: number, maxDepth: number) {
+        node.depth = currentDepth;
+        if (currentDepth > maxDepth) return;
+
         list.push(node);
         if (node.children) {
-            node.children.forEach(child => this.traverse(child, list));
+            node.children.forEach(child => this.traverse(child, list, currentDepth + 1, maxDepth));
         }
     }
 
@@ -118,5 +124,75 @@ export class GraphBuilder {
                 }
             });
         });
+    }
+
+    private detectConflicts(edges: Connection[], nodes: BlockNode[]): Conflict[] {
+        const conflicts: Conflict[] = [];
+        // Group mutable edges by target
+        const mutableEdgesByTarget = new Map<string, Connection[]>();
+
+        edges.forEach(e => {
+            if (e.type === 'mutable') {
+                if (!mutableEdgesByTarget.has(e.to)) {
+                    mutableEdgesByTarget.set(e.to, []);
+                }
+                mutableEdgesByTarget.get(e.to)!.push(e);
+            }
+        });
+
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+        mutableEdgesByTarget.forEach((connectedEdges, targetId) => {
+            if (connectedEdges.length > 1) {
+                // Conflict Detected!
+                const targetNode = nodeMap.get(targetId);
+                const targetName = targetNode?.name || targetId;
+
+                // Identify source names
+                const sources = connectedEdges.map(e => {
+                    const src = nodeMap.get(e.from);
+                    return src ? src.name : e.from;
+                });
+
+                // Generate Suggestions
+                let fix = '';
+                // Check if any source uses 'async' or threading imports
+                let usesConcurrency = false;
+
+                connectedEdges.forEach(e => {
+                    const src = nodeMap.get(e.from);
+                    if (src) {
+                        // Check imports
+                        if (src.imports.some(i => i.includes('thread') || i.includes('tokio') || i.includes('futures'))) {
+                            usesConcurrency = true;
+                        }
+                    }
+                });
+
+                if (usesConcurrency) {
+                    fix = `Wrap '${targetName}' data in 'Arc<Mutex<T>>' to allow safe shared mutable access across threads.`;
+                } else {
+                    fix = `Wrap '${targetName}' data in 'RefCell<T>' (for single-thread interior mutability) or restructure code to avoid simultaneous mutable borrows.`;
+                }
+
+                const conflictId = `ownership-conflict-${targetName}`;
+                conflicts.push({
+                    id: conflictId,
+                    description: `Multiple blocks (${sources.join(', ')}) are attempting to mutate '${targetName}'. This violates Rust's ownership rules if simultaneous.`,
+                    location: { file: targetNode?.filePath || 'unknown', line: targetNode?.startLine || 0 },
+                    severity: 'error',
+                    category: 'ownership-conflict',
+                    suggestedFix: fix
+                });
+
+                // Update Edge Types to Conflict (Red)
+                connectedEdges.forEach(e => {
+                    e.type = 'conflict';
+                    e.label = 'conflict';
+                });
+            }
+        });
+
+        return conflicts;
     }
 }

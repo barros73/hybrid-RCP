@@ -8,6 +8,7 @@ export interface BlockNode {
   endLine: number; // line number where the module declaration ends
   children: BlockNode[]; // nested modules
   imports: string[]; // list of 'use' imports detected (simple strings for now)
+  depth?: number; // tree depth level
   // New Semantic Properties
   data?: BlockData[]; // Structs owned by this block
   inputs?: BlockIO[]; // What this block consumes
@@ -38,6 +39,7 @@ export interface Connection {
 export interface BlockGraph {
   nodes: BlockNode[];
   edges: Connection[];
+  conflicts?: Conflict[];
 }
 
 export interface Conflict {

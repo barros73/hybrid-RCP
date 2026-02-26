@@ -6,6 +6,8 @@ import { BlockNode, Conflict, ParseResult, BlockData, BlockIO } from './types';
 export interface IFileSystem {
     readFile(path: string): Promise<string>;
     exists(path: string): Promise<boolean>;
+    writeFile(path: string, content: string): Promise<void>;
+    mkdir?(path: string): Promise<void>; // Optional mkdir
 }
 
 // Default implementation using Node.js fs (for testing/CLI)
@@ -18,7 +20,9 @@ export const nodeFileSystem: IFileSystem = {
         } catch {
             return false;
         }
-    }
+    },
+    writeFile: async (p: string, c: string) => fs.promises.writeFile(p, c, 'utf-8'),
+    mkdir: async (p: string) => fs.promises.mkdir(p, { recursive: true }).then(() => {})
 };
 
 export class RustParser {
