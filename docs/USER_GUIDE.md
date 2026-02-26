@@ -37,6 +37,11 @@ Hybrid-RCP supports **Rust**, **C++**, **C**, **Python**, **Go**, and **JavaScri
     *   **Full Analysis:** Good for detailed debugging.
     *   **Custom:** Enter a number (e.g., 5).
 
+### Hybrid Workspaces (Multi-Language)
+If your project uses multiple languages (e.g., a Rust core with a C++ frontend, or Python scripts calling C):
+1.  Select **`🌐 Auto-Detect Hybrid Workspace`** when prompted for the entry point.
+2.  The extension will scan for *all* supported project files (`Cargo.toml`, `CMakeLists.txt`, `requirements.txt`, `package.json`, etc.) and merge them into a single graph.
+
 ---
 
 ## 3. Visualizing the Graph
@@ -65,7 +70,10 @@ The extension generates three key files in your project root:
 
 1.  `project-structure.json`: Raw graph data.
 2.  `conflicts-report.md`: A human-readable list of errors.
-    *   **Action:** Open this file to see specific line numbers for Memory Leaks (C/C++), Goroutine leaks (Go), or Borrow Checker errors (Rust).
+    *   **Action:** Open this file to see specific line numbers for:
+        *   **Memory Leaks:** (C/C++) Mismatched `malloc/free` or `new/delete`.
+        *   **Concurrency Issues:** (Go) Unmanaged Goroutines.
+        *   **Global Conflicts:** Duplicate function names across files or circular dependencies.
 3.  `project-context.md`: **AI-Optimized Context**.
     *   **Action:** Copy the content of this file and paste it into ChatGPT, Gemini, or Claude.
     *   **Prompt Example:** *"I am pasting my project architecture below. Based on this, help me refactor the 'UserAuth' module to avoid the circular dependency with 'Database'."*

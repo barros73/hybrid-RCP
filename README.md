@@ -41,6 +41,11 @@ Hybrid-RCP fills this gap by providing:
     -   **C/C++**: Memory Leaks (Malloc > Free), Raw Pointers.
     -   **Go**: Unmanaged Goroutines.
     -   **JS**: `var` scope issues.
+-   **Global Conflict Detection**: Analyzes the entire workspace to find:
+    -   **Duplicate Symbols**: Functions or structs with the same name in different files (ODR violations).
+    -   **Circular Dependencies**: A -> B -> A loops that break builds.
+    -   **File Naming Collisions**: Ambiguous file names (e.g., `utils.py` in multiple folders).
+-   **Hybrid Workspace Support**: Seamlessly analyzes projects mixing languages (e.g., Rust + C++ FFI, Python + C extensions) by merging them into a single "Super Graph".
 -   **AI Context Generation**: Auto-generates a `project-context.md` file optimized for LLMs (Gemini, ChatGPT), providing a compact architectural map and token estimates.
 
 ## Getting Started
