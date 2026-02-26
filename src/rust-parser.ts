@@ -70,6 +70,7 @@ export class RustParser {
             const content = await this.fileSystem.readFile(filePath);
             const lines = content.split('\n');
             node.endLine = lines.length;
+            node.compilationCost = lines.length; // Approximate compilation cost using LOC
 
             // 1. Detect 'use' statements (simple regex)
             const useRegex = /use\s+([\w:{}]+);/g;
@@ -193,6 +194,7 @@ export class RustParser {
                      filePath: filePath, // Inline modules reside in the same file
                      startLine: lineIndex,
                      endLine: lineIndex, // To be determined
+                     compilationCost: 10, // Minimal cost for inline modules (placeholder)
                      children: [],
                      imports: [],
                      data: [],

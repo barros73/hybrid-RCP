@@ -1,6 +1,6 @@
 {
-  "name": "hybrid-rst",
-  "displayName": "Hybrid RST",
+  "name": "hybrid-rcp",
+  "displayName": "Hybrid RCP",
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -9,33 +9,33 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:hybrid-rst.parseLib"
+    "onCommand:hybrid-rcp.analyzeProject"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "hybrid-rst.analyzeProject",
-        "title": "Hybrid RST: Analyze Project (Graph & Conflicts)"
+        "command": "hybrid-rcp.analyzeProject",
+        "title": "Hybrid RCP: Analyze Project (Graph & Conflicts)"
       },
       {
-        "command": "hybrid-rst.createBlock",
-        "title": "Hybrid RST: Create New Block"
+        "command": "hybrid-rcp.createBlock",
+        "title": "Hybrid RCP: Create New Block"
       },
       {
-        "command": "hybrid-rst.analyzeLock",
-        "title": "Hybrid RST: Analyze Lock File (Dependencies)"
+        "command": "hybrid-rcp.analyzeLock",
+        "title": "Hybrid RCP: Analyze Lock File (Dependencies)"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "hybrid-rst.createBlock",
-          "group": "hybrid-rst"
+          "command": "hybrid-rcp.createBlock",
+          "group": "hybrid-rcp"
         },
         {
-          "command": "hybrid-rst.analyzeProject",
-          "group": "hybrid-rst"
+          "command": "hybrid-rcp.analyzeProject",
+          "group": "hybrid-rcp"
         }
       ]
     }
