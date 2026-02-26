@@ -245,6 +245,14 @@ export function activate(context: vscode.ExtensionContext) {
             path.join(rootPath, 'src', 'main.rs'),
             path.join(rootPath, 'main.cpp'),
             path.join(rootPath, 'src', 'main.cpp'),
+            path.join(rootPath, 'main.c'),
+            path.join(rootPath, 'src', 'main.c'),
+            path.join(rootPath, 'main.go'),
+            path.join(rootPath, 'cmd', 'main.go'),
+            path.join(rootPath, 'main.js'),
+            path.join(rootPath, 'index.js'),
+            path.join(rootPath, 'src', 'index.js'),
+            path.join(rootPath, 'app.js'),
             path.join(rootPath, 'main.py'),
             path.join(rootPath, 'app.py')
         ];
