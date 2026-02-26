@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { BlockNode, Conflict, ParseResult } from './types';
+import { BlockNode, Conflict, ParseResult, BlockData, BlockIO } from './types';
 
 // Abstract file system interface to allow testing without VS Code
 export interface IFileSystem {
@@ -44,7 +44,10 @@ export class RustParser {
             startLine: 0,
             endLine: 0,
             children: [],
-            imports: []
+            imports: [],
+            data: [],
+            inputs: [],
+            outputs: []
         };
 
         try {
@@ -71,7 +74,39 @@ export class RustParser {
                 node.imports.push(useMatch[1]);
             }
 
-            // 2. Detect basic Ownership Patterns (Heuristic)
+            // 2. Detect Structs (Block Data)
+            const structRegex = /(pub\s+)?struct\s+(\w+)/g;
+            let structMatch;
+            while ((structMatch = structRegex.exec(content)) !== null) {
+                node.data?.push({
+                    name: structMatch[2],
+                    isPublic: !!structMatch[1],
+                    type: 'struct'
+                });
+            }
+
+            // 3. Detect Functions (Outputs - Capabilities)
+            // Regex captures: 1=pub, 2=name, 3=args, 4=return_type
+            const fnRegex = /(pub\s+)?fn\s+(\w+)\s*\(([^)]*)\)\s*(->\s*[^{]+)?/g;
+            let fnMatch;
+            while ((fnMatch = fnRegex.exec(content)) !== null) {
+                const isPublic = !!fnMatch[1];
+                const fnName = fnMatch[2];
+                const args = fnMatch[3];
+                // Check for self references in args
+                const isMutable = args.includes('&mut self');
+                const isReference = args.includes('&self');
+
+                node.outputs?.push({
+                    name: fnName,
+                    type: isPublic ? 'pub fn' : 'fn',
+                    args: args,
+                    isMutable: isMutable,
+                    isReference: isReference
+                });
+            }
+
+            // 4. Detect basic Ownership Patterns (Heuristic)
             // Example: "static mut" is unsafe and a potential conflict source
             const staticMutRegex = /static\s+mut\s+(\w+)/g;
             let staticMatch;
@@ -88,10 +123,21 @@ export class RustParser {
                 });
             }
 
-            // Example: Multiple mutable references (hard to detect with regex, but we can flag potential risky patterns)
-            // This is a placeholder for where advanced analysis would hook in.
+            // Detect existing Smart Pointers usage
+            const smartPointerPatterns = [
+                { pattern: /Arc\s*<\s*Mutex\s*</, name: 'Arc<Mutex>' },
+                { pattern: /RwLock\s*</, name: 'RwLock' },
+                { pattern: /RefCell\s*</, name: 'RefCell' }
+            ];
 
-            // 3. Detect 'mod name;' (File modules)
+            for (const sp of smartPointerPatterns) {
+                if (sp.pattern.test(content)) {
+                   // Just log for now, or maybe add to node info?
+                   // For now we assume if they exist, the user is doing something right.
+                }
+            }
+
+            // 5. Detect 'mod name;' (File modules)
             const modFileRegex = /mod\s+(\w+)\s*;/g;
             let match;
             while ((match = modFileRegex.exec(content)) !== null) {
@@ -130,7 +176,7 @@ export class RustParser {
                 node.children.push(childNode);
             }
 
-            // 4. Detect 'mod name { ... }' (Inline modules)
+            // 6. Detect 'mod name { ... }' (Inline modules)
             const modInlineRegex = /mod\s+(\w+)\s*\{/g;
             while ((match = modInlineRegex.exec(content)) !== null) {
                  const modName = match[1];
@@ -144,7 +190,10 @@ export class RustParser {
                      startLine: lineIndex,
                      endLine: lineIndex, // To be determined
                      children: [],
-                     imports: []
+                     imports: [],
+                     data: [],
+                     inputs: [],
+                     outputs: []
                  };
                  node.children.push(childNode);
             }
