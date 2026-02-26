@@ -1,16 +1,54 @@
 
 import { RustParser, nodeFileSystem } from './rust-parser';
 import { GraphBuilder } from './graph-builder';
+import { BlockManager } from './block-manager';
 import * as path from 'path';
 
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 0) {
-        console.error('Usage: ts-node src/cli.ts <path-to-lib.rs>');
+        console.error('Usage:');
+        console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs>');
+        console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder>');
         process.exit(1);
     }
 
-    const libPath = path.resolve(args[0]);
+    const command = args[0];
+
+    if (command === 'create') {
+        if (args.length < 4) {
+            console.error('Usage: create <parent-file> <block-name> <type:file|folder>');
+            process.exit(1);
+        }
+        const parentPath = path.resolve(args[1]);
+        const blockName = args[2];
+        const type = args[3] as 'file' | 'folder';
+
+        if (type !== 'file' && type !== 'folder') {
+            console.error('Type must be "file" or "folder"');
+            process.exit(1);
+        }
+
+        const manager = new BlockManager(nodeFileSystem);
+        try {
+            const newPath = await manager.createBlock(parentPath, blockName, type);
+            console.log(`✅ Block '${blockName}' created successfully at: ${newPath}`);
+        } catch (err: any) {
+            console.error(`❌ Error creating block: ${err.message}`);
+            process.exit(1);
+        }
+        return;
+    }
+
+    // Default to 'analyze' if no command or explicit 'analyze'
+    let libPath: string;
+    if (command === 'analyze') {
+        libPath = path.resolve(args[1]);
+    } else {
+        // Backward compatibility: if first arg is a path, treat as analyze
+        libPath = path.resolve(args[0]);
+    }
+
     console.log(`Analyzing: ${libPath}`);
 
     const parser = new RustParser(nodeFileSystem);
