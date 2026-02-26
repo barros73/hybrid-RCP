@@ -15,10 +15,22 @@
   "contributes": {
     "commands": [
       {
-        "command": "hybrid-rst.parseLib",
-        "title": "Hybrid RST: Parse lib.rs"
+        "command": "hybrid-rst.analyzeProject",
+        "title": "Hybrid RST: Analyze Project (Graph & Conflicts)"
+      },
+      {
+        "command": "hybrid-rst.createBlock",
+        "title": "Hybrid RST: Create New Block"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "hybrid-rst.createBlock",
+          "group": "hybrid-rst"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

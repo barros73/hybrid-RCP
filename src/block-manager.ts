@@ -1,14 +1,17 @@
 import * as path from 'path';
 import { IFileSystem } from './rust-parser';
 import { CargoManager } from './cargo-manager';
+import { IUserInterface } from './ui-interface';
 
 export class BlockManager {
     private fileSystem: IFileSystem;
     private cargoManager?: CargoManager;
+    private ui?: IUserInterface;
 
-    constructor(fileSystem: IFileSystem, cargoManager?: CargoManager) {
+    constructor(fileSystem: IFileSystem, cargoManager?: CargoManager, ui?: IUserInterface) {
         this.fileSystem = fileSystem;
         this.cargoManager = cargoManager;
+        this.ui = ui;
     }
 
     async createBlock(parentFilePath: string, blockName: string, type: 'file' | 'folder'): Promise<string> {
@@ -95,18 +98,39 @@ pub trait SubBlock {
             const projectRoot = await this.findProjectRoot(parentFilePath);
             if (projectRoot) {
                 const cargoPath = path.join(projectRoot, 'Cargo.toml');
+                let depsToAdd: { name: string, version: string, features?: string[] }[] = [];
 
                 // Heuristics
                 if (blockName.includes('db') || blockName.includes('sql') || blockName.includes('database')) {
                     console.log(`AI Audit: Detected database-related block '${blockName}'. Adding 'sqlx' and 'tokio'.`);
-                    await this.cargoManager.addDependency(cargoPath, 'sqlx', '0.6', ['runtime-tokio-rustls', 'postgres']);
-                    await this.cargoManager.addDependency(cargoPath, 'tokio', '1.0', ['full']);
+                    depsToAdd.push({ name: 'sqlx', version: '0.6', features: ['runtime-tokio-rustls', 'postgres'] });
+                    depsToAdd.push({ name: 'tokio', version: '1.0', features: ['full'] });
                 }
 
                 if (blockName.includes('api') || blockName.includes('web') || blockName.includes('server')) {
                     console.log(`AI Audit: Detected web-related block '${blockName}'. Adding 'axum' and 'tokio'.`);
-                    await this.cargoManager.addDependency(cargoPath, 'axum', '0.6');
-                    await this.cargoManager.addDependency(cargoPath, 'tokio', '1.0', ['full']);
+                    depsToAdd.push({ name: 'axum', version: '0.6' });
+                    depsToAdd.push({ name: 'tokio', version: '1.0', features: ['full'] });
+                }
+
+                if (depsToAdd.length > 0) {
+                    let shouldAdd = true;
+                    if (this.ui) {
+                        const message = `AI Audit detected dependencies for '${blockName}': ${depsToAdd.map(d => d.name).join(', ')}. Add to Cargo.toml?`;
+                        const selection = await this.ui.showInformationMessage(message, 'Yes', 'No');
+                        // In CLI consoleUI, it returns undefined (auto-yes for MVP) unless we change it.
+                        // But for VS Code, it returns the string.
+                        // If selection is undefined (CLI default), treat as yes.
+                        if (selection !== 'Yes' && selection !== undefined) {
+                            shouldAdd = false;
+                        }
+                    }
+
+                    if (shouldAdd && this.cargoManager) {
+                        for (const dep of depsToAdd) {
+                            await this.cargoManager.addDependency(cargoPath, dep.name, dep.version, dep.features);
+                        }
+                    }
                 }
             }
         }

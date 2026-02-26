@@ -3,6 +3,7 @@ import { RustParser, nodeFileSystem } from './rust-parser';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
+import { consoleUI } from './ui-interface';
 import * as path from 'path';
 
 async function main() {
@@ -31,7 +32,7 @@ async function main() {
         }
 
         const cargoManager = new CargoManager(nodeFileSystem);
-        const manager = new BlockManager(nodeFileSystem, cargoManager);
+        const manager = new BlockManager(nodeFileSystem, cargoManager, consoleUI);
         try {
             const newPath = await manager.createBlock(parentPath, blockName, type);
             console.log(`✅ Block '${blockName}' created successfully at: ${newPath}`);
