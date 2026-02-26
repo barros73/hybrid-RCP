@@ -1,0 +1,34 @@
+{
+  "name": "hybrid-rst",
+  "displayName": "Hybrid RST",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:hybrid-rst.parseLib"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hybrid-rst.parseLib",
+        "title": "Hybrid RST: Parse lib.rs"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "node ./test-parser.js"
+  },
+  "devDependencies": {
+    "@types/node": "^16.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^4.9.4"
+  }
+}

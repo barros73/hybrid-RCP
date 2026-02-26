@@ -1,63 +1,75 @@
 # hybrid-RST IDE (VS Code Extension Concept) 🦀
 
-**hybrid-RST** è un'estensione per VS Code progettata per semplificare la gestione di programmi Rust complessi attraverso una visualizzazione a **"Blocchi Gerarchici" (Core + Sottoparti)** assistita dall'AI.
+**hybrid-RST** is a VS Code extension designed to simplify the management of complex Rust programs through an AI-assisted **"Hierarchical Block" (Core + Subparts)** visualization.
 
-L'obiettivo è trasformare la gestione dei file `lib.rs`, `mod.rs` e `Cargo.toml` in un'esperienza visiva, prevenendo i conflitti di *Ownership* e *Borrowing* prima ancora della compilazione.
-
----
-
-## 🎯 Il Problema
-Rust ha una curva di apprendimento ripida a causa della gestione rigorosa della memoria e della struttura dei moduli. In progetti complessi:
-* Il coordinamento tra `Cargo.toml` e la gerarchia dei file è verboso.
-* Tracciare chi "possiede" un dato tra il Core e i sottoblocchi è difficile mentalmente.
-* I conflitti di dipendenze emergono solo dopo il comando `cargo build`.
-
-## 💡 La Soluzione: Logica a Blocchi
-Ispirato a *CodeBlocks*, RustFlow introduce una gerarchia visiva:
-1.  **Core:** Il motore centrale dell'applicazione (logica di business, stati globali).
-2.  **Sottoparti (Sub-blocks):** Moduli isolati e specializzati.
-3.  **Core dei Sottoblocchi:** Logica interna di ogni modulo.
-4.  **Tracciamento Connessioni:** Visualizzazione in tempo reale di "chi pesca cosa" per evitare conflitti di accesso ai dati.
+The goal is to transform the management of `lib.rs`, `mod.rs`, and `Cargo.toml` files into a visual experience, preventing *Ownership* and *Borrowing* conflicts before compilation.
 
 ---
 
-## 🚀 Funzionalità Chiave (MVP)
+## 🎯 The Problem
+Rust has a steep learning curve due to its strict memory management and module structure. In complex projects:
+* Coordination between `Cargo.toml` and the file hierarchy is verbose.
+* Tracking who "owns" a piece of data between the Core and sub-blocks is mentally taxing.
+* Dependency conflicts only surface after running `cargo build`.
 
-### 1. Visualizzatore di Dipendenze Dinamico
-Un pannello laterale che genera un grafo dei moduli. Se il `Sottoblocco A` dipende dal `Core`, viene tracciata una linea. Se il `Sottoblocco B` tenta di accedere a un dato già "preso" dal `Sottoblocco A`, la linea diventa rossa (Conflitto di Ownership).
+## 💡 The Solution: Block Logic & Ownership Visualization
+Inspired by *CodeBlocks*, RustFlow introduces a visual hierarchy where **Ownership** is the central citizen:
 
-### 2. AI Architetto (Integration)
-Sfruttando modelli LLM (come Gemini/Jules), l'estensione:
-* Genera automaticamente le dichiarazioni `mod` e `pub use` necessarie.
-* Sincronizza il `Cargo.toml` in base alle librerie usate nei blocchi visivi.
-* Suggerisce l'uso di `Arc<Mutex<T>>` o `&T` analizzando le connessioni tra i blocchi.
+1.  **The "Semaphore" System on Connections:**
+    *   **Green Line (Immutable Reference `&T`):** A Sub-block reads data from the Core. Multiple blocks can have green lines to the same data.
+    *   **Yellow Line (Mutable Reference `&mut T`):** A Sub-block is modifying Core data. The AI "dims" all other connections to that data, enforcing Rust's single-writer rule.
+    *   **Red Line (Ownership Conflict):** Two Sub-blocks attempt to write (`&mut`) to the same Core data. The IDE blocks the write and the AI suggests a solution.
 
-### 3. Sincronizzazione Bidirezionale
-Modificando lo schema visivo, il codice Rust viene aggiornato. Modificando il codice (es. aggiungendo un parametro a una funzione del Core), lo schema evidenzia i blocchi che necessitano di aggiornamento.
+2.  **Smart Pointer Container Suggester:**
+    When a Red Line (conflict) is detected, instead of a cryptic error, the AI suggests "boxes" to wrap the data:
+    *   **`RefCell<T>`:** If two blocks need read/write access at different times (runtime check).
+    *   **`Arc<Mutex<T>>`:** If blocks run on different threads (Parallelism).
+    *   **`Option<T>`:** If the Core needs to signal that data might be unavailable.
+
+3.  **`Cargo.toml` as a "Block Manifest":**
+    *   **Global Manifest (Core):** Defines library versions for everyone.
+    *   **Local Features (Sub-blocks):** Each block declares only needed features.
+    *   **AI Audit:** Adding a "Database" block automatically adds `tokio` and `sqlx` to TOML, verifying version compatibility.
 
 ---
 
-## 🛠 Architettura Tecnica
-* **Frontend:** VS Code Webview API con **React Flow** o **D3.js** per il grafo.
-* **Backend:** TypeScript per l'estensione VS Code.
-* **Analisi Rust:** Integrazione con `rust-analyzer` tramite LSP per estrarre i metadati dei tipi e dei tratti.
-* **AI Layer:** Connessione alle API Google Gemini per la logica di refactoring e risoluzione conflitti.
+## 🚀 Key Features (MVP)
+
+### 1. Dynamic Dependency Viewer
+A sidebar panel that generates a module graph. The AI analyzes the call graph and translates compiler errors into visual alerts.
+
+### 2. AI Architect (Integration)
+Leveraging LLM models (like Gemini/Jules), the extension:
+* Analyzes predictive traits: "To connect Block B to Core, Block B must implement `Display`."
+* Assisted Refactoring: Moving logic regenerates pointers and access permissions (`pub`, `pub(crate)`).
+* Visualizes Data Lifecycle: Shows how data flows from Core outwards.
+
+### 3. Bidirectional Synchronization
+Modifying the visual schema updates the Rust code. Modifying the code updates the schema.
+
+---
+
+## 🛠 Technical Architecture
+* **Frontend:** VS Code Webview API with **React Flow** or **D3.js** for the graph.
+* **Backend:** TypeScript for the VS Code extension.
+* **Rust Analysis:** Integration with `rust-analyzer` via LSP to extract type and trait metadata.
+* **AI Layer:** Connection to Google Gemini APIs for refactoring logic and conflict resolution.
 
 ---
 
 ## 📌 Roadmap
-- [ ] **Fase 1:** Visualizzazione statica della struttura `mod` di un progetto esistente.
-- [ ] **Fase 2:** Creazione di file e moduli tramite interfaccia a blocchi (Drag & Drop).
-- [ ] **Fase 3:** Integrazione AI per l'auto-compilazione del `Cargo.toml`.
-- [ ] **Fase 4:** Analizzatore di Ownership visuale (Highlight dei potenziali errori di compilazione).
+- [ ] **Phase 1:** Static visualization of the `mod` structure of an existing project (Current Focus).
+- [ ] **Phase 2:** Creation of files and modules via block interface (Drag & Drop).
+- [ ] **Phase 3:** AI integration for `Cargo.toml` auto-compilation.
+- [ ] **Phase 4:** Visual Ownership Analyzer (Highlighting potential compilation errors).
 
 ---
 
-## 🤝 Contribuire
-Sei un amante di Rust o un esperto di AI? Aiutaci a rendere Rust accessibile a tutti!
-1. Fai il Fork del progetto.
-2. Crea un branch per la tua feature: `git checkout -b feature/nuovo-blocco`.
-3. Apri una Pull Request.
+## 🤝 Contributing
+Are you a Rust lover or an AI expert? Help us make Rust accessible to everyone!
+1. Fork the project.
+2. Create a branch for your feature: `git checkout -b feature/new-block`.
+3. Open a Pull Request.
 
 ---
-*Progetto ideato per semplificare l'architettura dei sistemi moderni.*
+*Project designed to simplify modern system architecture.*
