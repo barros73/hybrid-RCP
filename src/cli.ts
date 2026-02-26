@@ -74,14 +74,22 @@ async function main() {
 
     // Default to 'analyze' if no command or explicit 'analyze'
     let libPath: string;
+    let maxDepth = Infinity;
+
     if (command === 'analyze') {
         libPath = path.resolve(args[1]);
+        if (args[2] === '--depth') {
+            maxDepth = parseInt(args[3], 10) || Infinity;
+        }
     } else {
         // Backward compatibility: if first arg is a path, treat as analyze
         libPath = path.resolve(args[0]);
+        if (args[1] === '--depth') {
+            maxDepth = parseInt(args[2], 10) || Infinity;
+        }
     }
 
-    console.log(`Analyzing: ${libPath}`);
+    console.log(`Analyzing: ${libPath} (Depth: ${maxDepth === Infinity ? 'Full' : maxDepth})`);
 
     const parser = new RustParser(nodeFileSystem);
 
@@ -96,7 +104,7 @@ async function main() {
 
         // 2. Build Graph
         const builder = new GraphBuilder();
-        const graph = builder.build(result.root);
+        const graph = builder.build(result.root, maxDepth);
 
         console.log('\n--- Block Graph ---');
         console.log(`Nodes: ${graph.nodes.length}`);

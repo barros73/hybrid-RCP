@@ -241,6 +241,22 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
+        // 0. Prompt for Analysis Depth
+        const depthSelection = await vscode.window.showQuickPick(
+            ['Full Analysis (All Levels)', 'High Level (Top 2 Levels)', 'Custom Depth...'],
+            { placeHolder: 'Select Analysis Depth' }
+        );
+
+        let maxDepth = Infinity;
+        if (depthSelection === 'High Level (Top 2 Levels)') {
+            maxDepth = 2;
+        } else if (depthSelection === 'Custom Depth...') {
+            const depthInput = await vscode.window.showInputBox({ prompt: 'Enter max depth (number)', placeHolder: 'e.g., 3' });
+            if (depthInput) {
+                maxDepth = parseInt(depthInput, 10) || Infinity;
+            }
+        }
+
         vscode.window.showInformationMessage('Analyzing Rust project structure...');
 
         try {
@@ -249,7 +265,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             // 1. Build Graph
             const builder = new GraphBuilder();
-            const graph = builder.build(result.root);
+            const graph = builder.build(result.root, maxDepth);
 
             // 2. Generate JSON Structure
             const structureJson = JSON.stringify(graph, null, 2);

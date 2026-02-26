@@ -2,12 +2,12 @@
 import { BlockNode, BlockGraph, Connection, Conflict } from './types';
 
 export class GraphBuilder {
-    build(root: BlockNode): BlockGraph {
+    build(root: BlockNode, maxDepth: number = Infinity): BlockGraph {
         const nodes: BlockNode[] = [];
         const edges: Connection[] = [];
 
-        // 1. Flatten the tree into nodes
-        this.traverse(root, nodes);
+        // 1. Flatten the tree into nodes (with depth limit)
+        this.traverse(root, nodes, 0, maxDepth);
 
         // 2. Generate Edges (Connections)
         this.generateEdges(nodes, edges);
@@ -18,10 +18,13 @@ export class GraphBuilder {
         return { nodes, edges, conflicts };
     }
 
-    private traverse(node: BlockNode, list: BlockNode[]) {
+    private traverse(node: BlockNode, list: BlockNode[], currentDepth: number, maxDepth: number) {
+        node.depth = currentDepth;
+        if (currentDepth > maxDepth) return;
+
         list.push(node);
         if (node.children) {
-            node.children.forEach(child => this.traverse(child, list));
+            node.children.forEach(child => this.traverse(child, list, currentDepth + 1, maxDepth));
         }
     }
 

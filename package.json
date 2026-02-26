@@ -21,12 +21,20 @@
       {
         "command": "hybrid-rst.createBlock",
         "title": "Hybrid RST: Create New Block"
+      },
+      {
+        "command": "hybrid-rst.analyzeLock",
+        "title": "Hybrid RST: Analyze Lock File (Dependencies)"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "hybrid-rst.createBlock",
+          "group": "hybrid-rst"
+        },
+        {
+          "command": "hybrid-rst.analyzeProject",
           "group": "hybrid-rst"
         }
       ]
