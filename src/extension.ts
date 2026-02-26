@@ -63,8 +63,11 @@ class HybridRstPanel {
     }
 
     private _getHtmlForWebview(webview: vscode.Webview, graph: BlockGraph): string {
-        // Prepare graph data for Cytoscape (using CDN for simplicity in MVP)
-        // Convert nodes and edges to cytoscape format
+        // Resolve path to local Cytoscape resource
+        const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'media', 'cytoscape.min.js');
+        const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
+
+        // Convert BlockGraph to Cytoscape elements
         const nodes = graph.nodes.map(n => ({
             data: { id: n.id, label: n.name, type: n.type }
         }));
@@ -93,10 +96,10 @@ class HybridRstPanel {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hybrid-RST Graph</title>
-    <!-- Using Cytoscape from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    <script src="${scriptUri}"></script>
     <style>
         body { font-family: sans-serif; padding: 0; margin: 0; overflow: hidden; background-color: #1e1e1e; color: #ccc; }
         #cy { width: 100vw; height: 100vh; display: block; }
@@ -354,182 +357,3 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
-
-// Webview Panel for Graph Visualization
-class HybridRstPanel {
-    public static currentPanel: HybridRstPanel | undefined;
-    private readonly _panel: vscode.WebviewPanel;
-    private readonly _extensionUri: vscode.Uri;
-    private _disposables: vscode.Disposable[] = [];
-
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, graph: BlockGraph) {
-        this._panel = panel;
-        this._extensionUri = extensionUri;
-
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-        this._panel.webview.html = this._getHtmlForWebview(this._panel.webview, graph);
-    }
-
-    public static createOrShow(extensionUri: vscode.Uri, graph: BlockGraph) {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
-
-        if (HybridRstPanel.currentPanel) {
-            HybridRstPanel.currentPanel._panel.reveal(column);
-            HybridRstPanel.currentPanel._update(graph);
-            return;
-        }
-
-        const panel = vscode.window.createWebviewPanel(
-            'hybridRstGraph',
-            'Hybrid-RST Graph',
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
-            }
-        );
-
-        HybridRstPanel.currentPanel = new HybridRstPanel(panel, extensionUri, graph);
-    }
-
-    public dispose() {
-        HybridRstPanel.currentPanel = undefined;
-        this._panel.dispose();
-        while (this._disposables.length) {
-            const x = this._disposables.pop();
-            if (x) {
-                x.dispose();
-            }
-        }
-    }
-
-    private _update(graph: BlockGraph) {
-        this._panel.webview.html = this._getHtmlForWebview(this._panel.webview, graph);
-    }
-
-    private _getHtmlForWebview(webview: vscode.Webview, graph: BlockGraph): string {
-        // Convert BlockGraph to ReactFlow elements
-        const nodes = graph.nodes.map((n, i) => ({
-            id: n.id,
-            data: { label: n.name },
-            position: { x: 100 * (i % 3), y: 100 * Math.floor(i / 3) }, // Simple grid layout
-            style: { border: '1px solid #777', padding: '10px', borderRadius: '5px' }
-        }));
-
-        const edges = graph.edges.map((e, i) => {
-            let stroke = '#888';
-            if (e.type === 'immutable') stroke = '#4caf50'; // Green
-            if (e.type === 'mutable') stroke = '#ffeb3b'; // Yellow
-            if (e.type === 'conflict') stroke = '#f44336'; // Red
-            if (e.type === 'ownership') stroke = '#2196f3'; // Blue
-
-            return {
-                id: `e-${i}`,
-                source: e.from,
-                target: e.to,
-                label: e.label,
-                animated: true,
-                style: { stroke, strokeWidth: 2 },
-                labelStyle: { fill: stroke, fontWeight: 700 }
-            };
-        });
-
-        // Use a simple HTML template with React Flow via CDN (for MVP/Prototyping)
-        // Note: For production, we should bundle React Flow properly.
-        // Since VS Code webviews have CSP, CDN loading might be blocked unless configured.
-        // We'll use a very simple D3 or Cytoscape fallback if React Flow is too complex to inject via CDN without build.
-        // Actually, let's use a pure JS graph library like Cytoscape.js or just render SVG for now to avoid React complexity in this snippet.
-        // OR: Just dump the data into a variable and let a script handle it.
-
-        // Let's use Cytoscape.js from CDN as it's easier to embed in a single HTML file without JSX compilation.
-
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid-RST Graph</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 0; margin: 0; overflow: hidden; }
-        #cy { width: 100vw; height: 100vh; background-color: #1e1e1e; }
-        .legend { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 10px; color: white; border-radius: 5px; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
-    </style>
-</head>
-<body>
-    <div id="cy"></div>
-    <div class="legend">
-        <div class="legend-item"><div class="dot" style="background:#2196f3"></div>Ownership (Blue)</div>
-        <div class="legend-item"><div class="dot" style="background:#4caf50"></div>Immutable Read (Green)</div>
-        <div class="legend-item"><div class="dot" style="background:#ffeb3b"></div>Mutable Write (Yellow)</div>
-        <div class="legend-item"><div class="dot" style="background:#f44336"></div>Conflict (Red)</div>
-    </div>
-    <script>
-        const nodes = ${JSON.stringify(graph.nodes.map(n => ({ data: { id: n.id, label: n.name, type: n.type } })))};
-        const edges = ${JSON.stringify(graph.edges.map((e, i) => ({
-            data: {
-                id: 'e' + i,
-                source: e.from,
-                target: e.to,
-                label: e.label,
-                color: e.type === 'immutable' ? '#4caf50' :
-                       e.type === 'mutable' ? '#ffeb3b' :
-                       e.type === 'conflict' ? '#f44336' : '#2196f3'
-            }
-        })))};
-
-        var cy = cytoscape({
-            container: document.getElementById('cy'),
-            elements: [...nodes, ...edges],
-            style: [
-                {
-                    selector: 'node',
-                    style: {
-                        'background-color': '#666',
-                        'label': 'data(label)',
-                        'color': '#fff',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'width': 'label',
-                        'height': 'label',
-                        'padding': '10px',
-                        'shape': 'round-rectangle'
-                    }
-                },
-                {
-                    selector: 'edge',
-                    style: {
-                        'width': 3,
-                        'line-color': 'data(color)',
-                        'target-arrow-color': 'data(color)',
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                        'label': 'data(label)',
-                        'color': '#ccc',
-                        'font-size': '10px',
-                        'text-rotation': 'autorotate',
-                        'text-background-opacity': 1,
-                        'text-background-color': '#1e1e1e'
-                    }
-                }
-            ],
-            layout: {
-                name: 'cose',
-                animate: false
-            }
-        });
-
-        cy.on('tap', 'node', function(evt){
-            const node = evt.target;
-            // Send message back to VS Code to open file?
-            // console.log(node.id());
-        });
-    </script>
-</body>
-</html>`;
-    }
-}
