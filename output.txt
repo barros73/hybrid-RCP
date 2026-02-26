@@ -1,0 +1,55 @@
+Running standalone parser test...
+Parsing: /home/user/repo/test-workspace/src/lib.rs
+
+--- Structure ---
+{
+  "id": "/home/user/repo/test-workspace/src/lib.rs",
+  "name": "lib",
+  "type": "core",
+  "filePath": "/home/user/repo/test-workspace/src/lib.rs",
+  "startLine": 0,
+  "endLine": 5,
+  "children": [
+    {
+      "id": "/home/user/repo/test-workspace/src/core.rs",
+      "name": "core",
+      "type": "file",
+      "filePath": "/home/user/repo/test-workspace/src/core.rs",
+      "startLine": 1,
+      "endLine": 1,
+      "children": [],
+      "imports": []
+    },
+    {
+      "id": "/home/user/repo/test-workspace/src/utils.rs",
+      "name": "utils",
+      "type": "file",
+      "filePath": "/home/user/repo/test-workspace/src/utils.rs",
+      "startLine": 2,
+      "endLine": 1,
+      "children": [],
+      "imports": []
+    },
+    {
+      "id": "/home/user/repo/test-workspace/src/legacy.rs",
+      "name": "legacy",
+      "type": "file",
+      "filePath": "/home/user/repo/test-workspace/src/legacy.rs",
+      "startLine": 3,
+      "endLine": 0,
+      "children": [],
+      "imports": []
+    }
+  ],
+  "imports": []
+}
+
+--- Conflicts ---
+[WARNING] Detected 'static mut GLOBAL_COUNTER'. This requires 'unsafe' blocks and is prone to data races.
+    Suggestion: Consider using 'lazy_static!' with 'Arc<Mutex<T>>' or 'RwLock<T>' for safe global mutable state.
+[ERROR] File not found: /home/user/repo/test-workspace/src/legacy.rs
+    Suggestion: Create file at /home/user/repo/test-workspace/src/legacy.rs or remove 'mod legacy;' declaration.
+[ERROR] Module file not found for 'mod legacy;'.
+    Suggestion: Create 'legacy.rs' or 'legacy/mod.rs'.
+
+✅ TEST PASSED: Detected missing file and unsafe pattern.
