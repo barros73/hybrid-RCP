@@ -35,8 +35,8 @@ class HybridRstPanel {
         }
 
         const panel = vscode.window.createWebviewPanel(
-            'hybridRstGraph',
-            'Hybrid-RST Graph',
+            'hybridRcpGraph',
+            'Hybrid-RCP Graph',
             column || vscode.ViewColumn.One,
             {
                 enableScripts: true,
@@ -69,7 +69,12 @@ class HybridRstPanel {
 
         // Convert BlockGraph to Cytoscape elements
         const nodes = graph.nodes.map(n => ({
-            data: { id: n.id, label: n.name, type: n.type }
+            data: {
+                id: n.id,
+                label: `${n.name}\n(Loc: ${n.compilationCost || '?'})`,
+                type: n.type,
+                compilationCost: n.compilationCost || 10
+            }
         }));
 
         const edges = graph.edges.map((e, i) => {
@@ -98,7 +103,7 @@ class HybridRstPanel {
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid-RST Graph</title>
+    <title>Hybrid-RCP Graph</title>
     <script src="${scriptUri}"></script>
     <style>
         body { font-family: sans-serif; padding: 0; margin: 0; overflow: hidden; background-color: #1e1e1e; color: #ccc; }
@@ -130,8 +135,9 @@ class HybridRstPanel {
                             'color': '#fff',
                             'text-valign': 'center',
                             'text-halign': 'center',
-                            'width': 'label',
-                            'height': 'label',
+                            'text-wrap': 'wrap',
+                            'width': 'mapData(compilationCost, 0, 1000, 60, 200)',
+                            'height': 'mapData(compilationCost, 0, 1000, 60, 200)',
                             'padding': '10px',
                             'shape': 'round-rectangle',
                             'border-width': 1,
@@ -220,9 +226,9 @@ class VSCodeFileSystem implements IFileSystem {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Hybrid RST extension is active');
+    console.log('Hybrid RCP extension is active');
 
-    let disposable = vscode.commands.registerCommand('hybrid-rst.analyzeProject', async () => {
+    let disposable = vscode.commands.registerCommand('hybrid-rcp.analyzeProject', async () => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             vscode.window.showErrorMessage('No workspace folder open');
@@ -273,7 +279,7 @@ export function activate(context: vscode.ExtensionContext) {
             await vscode.workspace.fs.writeFile(vscode.Uri.file(jsonPath), Buffer.from(structureJson));
 
             // 3. Generate Conflicts Report (Markdown)
-            let conflictsMd = '# Hybrid-RST Conflict Report\n\n';
+            let conflictsMd = '# Hybrid-RCP Conflict Report\n\n';
             conflictsMd += 'This file lists structural and ownership conflicts detected in your Rust project. An AI agent can use this information to propose fixes.\n\n';
 
             // Collect all conflicts (parser + graph)
@@ -317,7 +323,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(disposable);
 
-    let createBlockDisposable = vscode.commands.registerCommand('hybrid-rst.createBlock', async () => {
+    let createBlockDisposable = vscode.commands.registerCommand('hybrid-rcp.createBlock', async () => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             vscode.window.showErrorMessage('No workspace folder open');
@@ -371,7 +377,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(createBlockDisposable);
 
-    let analyzeLockDisposable = vscode.commands.registerCommand('hybrid-rst.analyzeLock', async () => {
+    let analyzeLockDisposable = vscode.commands.registerCommand('hybrid-rcp.analyzeLock', async () => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) return;
 

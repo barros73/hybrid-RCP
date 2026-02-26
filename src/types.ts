@@ -9,6 +9,7 @@ export interface BlockNode {
   children: BlockNode[]; // nested modules
   imports: string[]; // list of 'use' imports detected (simple strings for now)
   depth?: number; // tree depth level
+  compilationCost?: number; // Estimated compilation cost (e.g., Lines of Code)
   // New Semantic Properties
   data?: BlockData[]; // Structs owned by this block
   inputs?: BlockIO[]; // What this block consumes
