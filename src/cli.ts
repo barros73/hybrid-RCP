@@ -6,6 +6,7 @@ import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
 import { AiContextGenerator } from './generators/ai-context-generator';
 import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
+import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
 
@@ -110,10 +111,17 @@ async function main() {
 
         // 2b. Global Analysis
         const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+
+        // 2c. Pattern Analysis
+        const patternAnalyzer = new PatternAnalyzer(nodeFileSystem);
+        const patternConflicts = await patternAnalyzer.analyze(graph);
+
+        const allExtras = [...globalConflicts, ...patternConflicts];
+
         if (graph.conflicts) {
-            graph.conflicts.push(...globalConflicts);
+            graph.conflicts.push(...allExtras);
         } else {
-            graph.conflicts = globalConflicts;
+            graph.conflicts = allExtras;
         }
 
         console.log('\n--- Block Graph ---');

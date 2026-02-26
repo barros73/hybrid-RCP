@@ -8,6 +8,7 @@ import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
 import { AiContextGenerator } from './generators/ai-context-generator';
 import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
+import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { TextDecoder, TextEncoder } from 'util';
 import { BlockGraph } from './types';
 import { IUserInterface } from './ui-interface';
@@ -319,10 +320,17 @@ export function activate(context: vscode.ExtensionContext) {
 
             // 1b. Run Global Conflict Analysis (Cross-File)
             const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+
+            // 1c. Run Pattern Analysis (Secrets, Safety)
+            const patternAnalyzer = new PatternAnalyzer(fsAdapter);
+            const patternConflicts = await patternAnalyzer.analyze(graph);
+
+            const allExtras = [...globalConflicts, ...patternConflicts];
+
             if (graph.conflicts) {
-                graph.conflicts.push(...globalConflicts);
+                graph.conflicts.push(...allExtras);
             } else {
-                graph.conflicts = globalConflicts;
+                graph.conflicts = allExtras;
             }
 
             // 2. Generate JSON Structure

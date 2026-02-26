@@ -50,6 +50,7 @@ export class HybridManager {
             'file1.c', 'file2.c', // For testing
             'main.go', 'cmd/main.go',
             'index.js', 'src/index.js',
+            'app.ts', 'unused.ts', // For testing patterns
             'main.py', 'app.py'
         ];
 

@@ -155,6 +155,37 @@ export class GlobalConflictAnalyzer {
             }
         });
 
+        // 5. Detect Dead Code (Orphan Nodes)
+        // Nodes with 0 incoming edges (excluding entry points)
+        const incomingEdges = new Map<string, number>();
+        graph.nodes.forEach(n => incomingEdges.set(n.id, 0));
+        graph.edges.forEach(e => {
+            const count = incomingEdges.get(e.to) || 0;
+            incomingEdges.set(e.to, count + 1);
+        });
+
+        graph.nodes.forEach(node => {
+            const incoming = incomingEdges.get(node.id) || 0;
+
+            // Skip entry points and special files
+            // Loose check for 'app' allows 'app.ts' to be entry point.
+            // 'unused.ts' -> name 'unused'
+            const isEntryPoint = ['main', 'lib', 'index', 'app', 'cli'].some(k => node.name.toLowerCase().includes(k));
+            const isSpecial = node.name.startsWith('mod') || node.name === '__init__';
+
+            // Only report if it's a file node
+            if (incoming === 0 && !isEntryPoint && !isSpecial && node.type === 'file') {
+                conflicts.push({
+                    id: `dead-code-${node.name}`,
+                    description: `Potential Orphan Module: '${node.name}' has 0 incoming dependencies.`,
+                    location: { file: node.filePath || 'unknown', line: 0 },
+                    severity: 'warning',
+                    category: 'ownership-conflict',
+                    suggestedFix: `Verify if this module is used. If not, delete it.`
+                });
+            }
+        });
+
         return conflicts;
     }
 }
