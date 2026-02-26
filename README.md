@@ -63,6 +63,7 @@ Hybrid-RCP generates a `project-context.md` file in your root directory. This fi
 
 ## Language-Specific Documentation
 
+*   **[User Guide](docs/USER_GUIDE.md)** (Start Here)
 *   [Rust Architecture](docs/ARCHITECTURE.md)
 *   [C Adapter Map](docs/adapters/C_SYSTEM_MAP.md)
 *   [C++ Adapter Map](docs/adapters/CPP_SYSTEM_MAP.md)
