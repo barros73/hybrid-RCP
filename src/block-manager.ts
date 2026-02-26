@@ -1,11 +1,14 @@
 import * as path from 'path';
 import { IFileSystem } from './rust-parser';
+import { CargoManager } from './cargo-manager';
 
 export class BlockManager {
     private fileSystem: IFileSystem;
+    private cargoManager?: CargoManager;
 
-    constructor(fileSystem: IFileSystem) {
+    constructor(fileSystem: IFileSystem, cargoManager?: CargoManager) {
         this.fileSystem = fileSystem;
+        this.cargoManager = cargoManager;
     }
 
     async createBlock(parentFilePath: string, blockName: string, type: 'file' | 'folder'): Promise<string> {
@@ -87,10 +90,44 @@ pub trait SubBlock {
 `;
         await fileSystem.writeFile(newFilePath, template);
 
+        // 8. Auto-Inject Dependencies (AI Audit)
+        if (this.cargoManager) {
+            const projectRoot = await this.findProjectRoot(parentFilePath);
+            if (projectRoot) {
+                const cargoPath = path.join(projectRoot, 'Cargo.toml');
+
+                // Heuristics
+                if (blockName.includes('db') || blockName.includes('sql') || blockName.includes('database')) {
+                    console.log(`AI Audit: Detected database-related block '${blockName}'. Adding 'sqlx' and 'tokio'.`);
+                    await this.cargoManager.addDependency(cargoPath, 'sqlx', '0.6', ['runtime-tokio-rustls', 'postgres']);
+                    await this.cargoManager.addDependency(cargoPath, 'tokio', '1.0', ['full']);
+                }
+
+                if (blockName.includes('api') || blockName.includes('web') || blockName.includes('server')) {
+                    console.log(`AI Audit: Detected web-related block '${blockName}'. Adding 'axum' and 'tokio'.`);
+                    await this.cargoManager.addDependency(cargoPath, 'axum', '0.6');
+                    await this.cargoManager.addDependency(cargoPath, 'tokio', '1.0', ['full']);
+                }
+            }
+        }
+
         return newFilePath;
     }
 
     private toPascalCase(str: string): string {
         return str.replace(/(^|_)([a-z])/g, (g) => g.slice(-1).toUpperCase());
+    }
+
+    private async findProjectRoot(startPath: string): Promise<string | null> {
+        let currentDir = path.dirname(startPath);
+        // Safety break for root
+        while (path.dirname(currentDir) !== currentDir) {
+            const cargoPath = path.join(currentDir, 'Cargo.toml');
+            if (await this.fileSystem.exists(cargoPath)) {
+                return currentDir;
+            }
+            currentDir = path.dirname(currentDir);
+        }
+        return null;
     }
 }

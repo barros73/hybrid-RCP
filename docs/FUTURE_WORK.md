@@ -5,7 +5,7 @@ The IDE should manage `Cargo.toml` hierarchically to prevent version conflicts.
 
 *   **Global Manifest (Core):** Defines library versions for the entire workspace.
 *   **Local Features (Sub-blocks):** Each block declares only the features it needs.
-*   **AI Audit:** When adding a new block (e.g., "Database"), the AI automatically adds necessary dependencies (e.g., `tokio`, `sqlx`) to `Cargo.toml`, ensuring version compatibility with the Core.
+*   **AI Audit:** (Implemented) When adding a new block (e.g., "Database"), the AI automatically adds necessary dependencies (e.g., `tokio`, `sqlx`) to `Cargo.toml`, ensuring version compatibility with the Core.
 
 ## 2. Block Interface Contract (Traits)
 To standardize block interactions, the AI should enforce a `SubBlock` trait for new modules:

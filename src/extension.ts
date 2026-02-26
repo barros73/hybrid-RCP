@@ -3,6 +3,7 @@ import * as path from 'path';
 import { RustParser, IFileSystem } from './rust-parser';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
+import { CargoManager } from './cargo-manager';
 import { TextDecoder, TextEncoder } from 'util';
 
 // VS Code FileSystem Implementation
@@ -150,7 +151,8 @@ export function activate(context: vscode.ExtensionContext) {
         const parentPath = uris[0].fsPath;
 
         const fsAdapter = new VSCodeFileSystem();
-        const manager = new BlockManager(fsAdapter);
+        const cargoManager = new CargoManager(fsAdapter);
+        const manager = new BlockManager(fsAdapter, cargoManager);
 
         try {
             const newPath = await manager.createBlock(parentPath, blockName, blockType as 'file' | 'folder');
