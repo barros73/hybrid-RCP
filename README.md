@@ -41,6 +41,7 @@ Hybrid-RCP fills this gap by providing:
     -   **C/C++**: Memory Leaks (Malloc > Free), Raw Pointers.
     -   **Go**: Unmanaged Goroutines.
     -   **JS**: `var` scope issues.
+-   **AI Context Generation**: Auto-generates a `project-context.md` file optimized for LLMs (Gemini, ChatGPT), providing a compact architectural map and token estimates.
 
 ## Getting Started
 
@@ -48,7 +49,17 @@ Hybrid-RCP fills this gap by providing:
 2.  Run the command `Hybrid RCP: Analyze Project`.
 3.  Select your entry point (e.g., `src/lib.rs`, `main.cpp`, `main.go`, `app.js`) if not automatically detected.
 4.  Select your analysis depth.
-5.  Explore the interactive graph and review the generated `conflicts-report.md`.
+5.  Explore the interactive graph and review the generated `conflicts-report.md` and `project-context.md`.
+
+## AI Integration (Context for LLMs)
+
+Hybrid-RCP generates a `project-context.md` file in your root directory. This file is designed to be pasted into LLM prompts to give the AI a perfect understanding of your project's structure without reading every file.
+
+**It includes:**
+*   **Tree View**: Hierarchy of modules/classes with token estimates.
+*   **Contracts**: Public API signatures and types.
+*   **Dependency Graph**: Explicit flow of data and ownership.
+*   **Conflict List**: Active architectural violations.
 
 ## Language-Specific Documentation
 

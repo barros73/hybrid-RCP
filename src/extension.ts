@@ -5,6 +5,7 @@ import { IFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
+import { AiContextGenerator } from './generators/ai-context-generator';
 import { TextDecoder, TextEncoder } from 'util';
 import { BlockGraph } from './types';
 import { IUserInterface } from './ui-interface';
@@ -348,7 +349,12 @@ export function activate(context: vscode.ExtensionContext) {
             const reportUri = vscode.Uri.file(reportPath);
             await vscode.workspace.fs.writeFile(reportUri, Buffer.from(conflictsMd));
 
-            vscode.window.showInformationMessage(`Analysis complete! Reports generated: project-structure.json, conflicts-report.md`);
+            // 4. Generate AI Context
+            const aiContext = AiContextGenerator.generate(graph, path.basename(rootPath));
+            const aiContextPath = path.join(rootPath, 'project-context.md');
+            await vscode.workspace.fs.writeFile(vscode.Uri.file(aiContextPath), Buffer.from(aiContext));
+
+            vscode.window.showInformationMessage(`Analysis complete! Reports generated: project-structure.json, conflicts-report.md, project-context.md`);
 
             // Open the report for the user
             const doc = await vscode.workspace.openTextDocument(reportUri);

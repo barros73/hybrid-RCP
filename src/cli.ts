@@ -4,6 +4,7 @@ import { nodeFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
+import { AiContextGenerator } from './generators/ai-context-generator';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
 
@@ -140,6 +141,14 @@ async function main() {
                     console.log(`  💡 Fix: ${c.suggestedFix}`);
                 }
             });
+        }
+
+        // Generate Context
+        if (args.includes('--context')) {
+            const context = AiContextGenerator.generate(graph, path.basename(libPath));
+            const contextPath = path.join(path.dirname(libPath), 'project-context.md');
+            await nodeFileSystem.writeFile(contextPath, context);
+            console.log(`\n📄 Generated AI Context at: ${contextPath}`);
         }
 
     } catch (err: any) {
