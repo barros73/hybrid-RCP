@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { RustParser, IFileSystem } from './rust-parser';
+import { GraphBuilder } from './graph-builder';
 import { TextDecoder } from 'util';
 
 // VS Code FileSystem Implementation
@@ -50,20 +51,27 @@ export function activate(context: vscode.ExtensionContext) {
             const parser = new RustParser(fsAdapter);
             const result = await parser.parse(libPath);
 
-            // 1. Generate JSON Structure
-            const structureJson = JSON.stringify(result.root, null, 2);
+            // 1. Build Graph
+            const builder = new GraphBuilder();
+            const graph = builder.build(result.root);
+
+            // 2. Generate JSON Structure
+            const structureJson = JSON.stringify(graph, null, 2);
             const jsonPath = path.join(rootPath, 'project-structure.json');
             await vscode.workspace.fs.writeFile(vscode.Uri.file(jsonPath), Buffer.from(structureJson));
 
-            // 2. Generate Conflicts Report (Markdown)
+            // 3. Generate Conflicts Report (Markdown)
             let conflictsMd = '# Hybrid-RST Conflict Report\n\n';
             conflictsMd += 'This file lists structural and ownership conflicts detected in your Rust project. An AI agent can use this information to propose fixes.\n\n';
 
-            if (result.conflicts.length === 0) {
+            // Collect all conflicts (parser + graph)
+            const allConflicts = [...result.conflicts, ...(graph.conflicts || [])];
+
+            if (allConflicts.length === 0) {
                 conflictsMd += '✅ **No structural conflicts detected.**\n';
             } else {
-                conflictsMd += `⚠️ **Found ${result.conflicts.length} potential conflicts:**\n\n`;
-                result.conflicts.forEach(c => {
+                conflictsMd += `⚠️ **Found ${allConflicts.length} potential conflicts:**\n\n`;
+                allConflicts.forEach(c => {
                     conflictsMd += `## Conflict: ${c.id}\n`;
                     conflictsMd += `- **Category**: ${c.category}\n`;
                     conflictsMd += `- **Description**: ${c.description}\n`;

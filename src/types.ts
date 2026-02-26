@@ -38,6 +38,7 @@ export interface Connection {
 export interface BlockGraph {
   nodes: BlockNode[];
   edges: Connection[];
+  conflicts?: Conflict[];
 }
 
 export interface Conflict {

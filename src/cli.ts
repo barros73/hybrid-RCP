@@ -54,6 +54,16 @@ async function main() {
             console.log(`${color} ${e.from.split('/').pop()} -> ${e.to.split('/').pop()} : ${e.label}`);
         });
 
+        if (graph.conflicts && graph.conflicts.length > 0) {
+            console.log(`\n⚠️  Found ${graph.conflicts.length} structural conflicts:`);
+            graph.conflicts.forEach(c => {
+                console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
+                if (c.suggestedFix) {
+                    console.log(`  💡 Fix: ${c.suggestedFix}`);
+                }
+            });
+        }
+
     } catch (err: any) {
         console.error(`Error: ${err.message}`);
         process.exit(1);
