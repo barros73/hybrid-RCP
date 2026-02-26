@@ -1,4 +1,4 @@
-import { IFileSystem } from './rust-parser';
+import { IFileSystem } from './utils/filesystem';
 import { Conflict } from './types';
 
 export class CargoManager {

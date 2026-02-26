@@ -1,5 +1,6 @@
 
-import { RustParser, nodeFileSystem } from './src/rust-parser';
+import { RustParser } from './src/parsers/rust-parser';
+import { nodeFileSystem } from './src/utils/filesystem';
 import { GraphBuilder } from './src/graph-builder';
 import * as path from 'path';
 

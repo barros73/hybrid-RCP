@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { RustParser, IFileSystem } from './rust-parser';
+import { ParserFactory } from './parsers/factory';
+import { IFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
@@ -236,15 +237,48 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const rootPath = workspaceFolders[0].uri.fsPath;
-        // We look for src/lib.rs as the entry point for a library crate
-        const libPath = path.join(rootPath, 'src', 'lib.rs');
-
         const fsAdapter = new VSCodeFileSystem();
 
-        // Basic check if lib.rs exists
-        if (!await fsAdapter.exists(libPath)) {
-            vscode.window.showErrorMessage(`Could not find src/lib.rs in ${rootPath}. Please open a Rust library project.`);
-            return;
+        // Detect entry point
+        const candidates = [
+            path.join(rootPath, 'src', 'lib.rs'),
+            path.join(rootPath, 'src', 'main.rs'),
+            path.join(rootPath, 'main.cpp'),
+            path.join(rootPath, 'src', 'main.cpp'),
+            path.join(rootPath, 'main.py'),
+            path.join(rootPath, 'app.py')
+        ];
+
+        let entryPath: string | undefined;
+        const foundCandidates = [];
+
+        for (const p of candidates) {
+            if (await fsAdapter.exists(p)) {
+                foundCandidates.push(p);
+            }
+        }
+
+        if (foundCandidates.length === 1) {
+            entryPath = foundCandidates[0];
+        } else if (foundCandidates.length > 1) {
+            entryPath = await vscode.window.showQuickPick(foundCandidates, { placeHolder: 'Select Entry File' });
+        }
+
+        if (!entryPath) {
+             const uris = await vscode.window.showOpenDialog({
+                canSelectFiles: true,
+                canSelectFolders: false,
+                canSelectMany: false,
+                defaultUri: vscode.Uri.file(rootPath),
+                openLabel: 'Select Entry File'
+            });
+            if (uris && uris.length > 0) {
+                entryPath = uris[0].fsPath;
+            }
+        }
+
+        if (!entryPath) {
+             return;
         }
 
         // 0. Prompt for Analysis Depth
@@ -263,11 +297,11 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        vscode.window.showInformationMessage('Analyzing Rust project structure...');
+        vscode.window.showInformationMessage(`Analyzing project structure (${path.basename(entryPath)})...`);
 
         try {
-            const parser = new RustParser(fsAdapter);
-            const result = await parser.parse(libPath);
+            const parser = ParserFactory.getParserForFile(entryPath, fsAdapter);
+            const result = await parser.parse(entryPath);
 
             // 1. Build Graph
             const builder = new GraphBuilder();

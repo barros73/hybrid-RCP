@@ -1,5 +1,6 @@
 
-import { RustParser, nodeFileSystem } from './rust-parser';
+import { ParserFactory } from './parsers/factory';
+import { nodeFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
@@ -91,9 +92,8 @@ async function main() {
 
     console.log(`Analyzing: ${libPath} (Depth: ${maxDepth === Infinity ? 'Full' : maxDepth})`);
 
-    const parser = new RustParser(nodeFileSystem);
-
     try {
+        const parser = ParserFactory.getParserForFile(libPath, nodeFileSystem);
         // 1. Parse Modules
         const result = await parser.parse(libPath);
 
