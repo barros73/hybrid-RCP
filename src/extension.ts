@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { RustParser, IFileSystem } from './rust-parser';
+import { ParserFactory } from './parsers/factory';
+import { HybridManager } from './parsers/hybrid-manager';
+import { IFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
+import { AiContextGenerator } from './generators/ai-context-generator';
+import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
+import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { TextDecoder, TextEncoder } from 'util';
 import { BlockGraph } from './types';
 import { IUserInterface } from './ui-interface';
@@ -236,15 +241,48 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const rootPath = workspaceFolders[0].uri.fsPath;
-        // We look for src/lib.rs as the entry point for a library crate
-        const libPath = path.join(rootPath, 'src', 'lib.rs');
-
         const fsAdapter = new VSCodeFileSystem();
 
-        // Basic check if lib.rs exists
-        if (!await fsAdapter.exists(libPath)) {
-            vscode.window.showErrorMessage(`Could not find src/lib.rs in ${rootPath}. Please open a Rust library project.`);
-            return;
+        // Detect entry point or Hybrid Mode
+        const candidates = [
+            path.join(rootPath, 'src', 'lib.rs'),
+            path.join(rootPath, 'src', 'main.rs'),
+            path.join(rootPath, 'main.cpp'),
+            path.join(rootPath, 'src', 'main.cpp'),
+            path.join(rootPath, 'main.c'),
+            path.join(rootPath, 'src', 'main.c'),
+            path.join(rootPath, 'main.go'),
+            path.join(rootPath, 'cmd', 'main.go'),
+            path.join(rootPath, 'main.js'),
+            path.join(rootPath, 'index.js'),
+            path.join(rootPath, 'src', 'index.js'),
+            path.join(rootPath, 'app.js'),
+            path.join(rootPath, 'main.py'),
+            path.join(rootPath, 'app.py')
+        ];
+
+        let entryPath: string | undefined;
+        let isHybrid = false;
+
+        const foundCandidates = [];
+        for (const p of candidates) {
+            if (await fsAdapter.exists(p)) {
+                foundCandidates.push(p);
+            }
+        }
+
+        // Add Hybrid Option
+        const quickPickItems = foundCandidates.map(p => ({ label: path.relative(rootPath, p), path: p }));
+        quickPickItems.unshift({ label: '🌐 Auto-Detect Hybrid Workspace (Multi-Language)', path: 'HYBRID' });
+
+        const selected = await vscode.window.showQuickPick(quickPickItems, { placeHolder: 'Select Entry Point or Hybrid Mode' });
+
+        if (!selected) return;
+
+        if (selected.path === 'HYBRID') {
+            isHybrid = true;
+        } else {
+            entryPath = selected.path;
         }
 
         // 0. Prompt for Analysis Depth
@@ -263,15 +301,37 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        vscode.window.showInformationMessage('Analyzing Rust project structure...');
+        vscode.window.showInformationMessage(`Analyzing project structure...`);
 
         try {
-            const parser = new RustParser(fsAdapter);
-            const result = await parser.parse(libPath);
+            let result;
+            if (isHybrid) {
+                const manager = new HybridManager(fsAdapter);
+                result = await manager.parse(rootPath);
+            } else {
+                if (!entryPath) return; // Should not happen
+                const parser = ParserFactory.getParserForFile(entryPath, fsAdapter);
+                result = await parser.parse(entryPath);
+            }
 
             // 1. Build Graph
             const builder = new GraphBuilder();
             const graph = builder.build(result.root, maxDepth);
+
+            // 1b. Run Global Conflict Analysis (Cross-File)
+            const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+
+            // 1c. Run Pattern Analysis (Secrets, Safety)
+            const patternAnalyzer = new PatternAnalyzer(fsAdapter);
+            const patternConflicts = await patternAnalyzer.analyze(graph);
+
+            const allExtras = [...globalConflicts, ...patternConflicts];
+
+            if (graph.conflicts) {
+                graph.conflicts.push(...allExtras);
+            } else {
+                graph.conflicts = allExtras;
+            }
 
             // 2. Generate JSON Structure
             const structureJson = JSON.stringify(graph, null, 2);
@@ -306,7 +366,12 @@ export function activate(context: vscode.ExtensionContext) {
             const reportUri = vscode.Uri.file(reportPath);
             await vscode.workspace.fs.writeFile(reportUri, Buffer.from(conflictsMd));
 
-            vscode.window.showInformationMessage(`Analysis complete! Reports generated: project-structure.json, conflicts-report.md`);
+            // 4. Generate AI Context
+            const aiContext = AiContextGenerator.generate(graph, path.basename(rootPath));
+            const aiContextPath = path.join(rootPath, 'project-context.md');
+            await vscode.workspace.fs.writeFile(vscode.Uri.file(aiContextPath), Buffer.from(aiContext));
+
+            vscode.window.showInformationMessage(`Analysis complete! Reports generated: project-structure.json, conflicts-report.md, project-context.md`);
 
             // Open the report for the user
             const doc = await vscode.workspace.openTextDocument(reportUri);

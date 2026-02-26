@@ -5,8 +5,14 @@
   "engines": {
     "vscode": "^1.74.0"
   },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Visualization",
+    "Data Science"
   ],
   "activationEvents": [
     "onCommand:hybrid-rcp.analyzeProject"

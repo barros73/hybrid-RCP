@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { IFileSystem } from './rust-parser';
+import { IFileSystem } from './utils/filesystem';
 import { CargoManager } from './cargo-manager';
 import { IUserInterface } from './ui-interface';
 

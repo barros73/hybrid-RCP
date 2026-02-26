@@ -1,31 +1,10 @@
-import * as fs from 'fs';
 import * as path from 'path';
-import { BlockNode, Conflict, ParseResult, BlockData, BlockIO } from './types';
+import { BlockNode, Conflict, ParseResult, IProjectParser } from './types';
+import { IFileSystem, nodeFileSystem } from '../utils/filesystem';
 
-// Abstract file system interface to allow testing without VS Code
-export interface IFileSystem {
-    readFile(path: string): Promise<string>;
-    exists(path: string): Promise<boolean>;
-    writeFile(path: string, content: string): Promise<void>;
-    mkdir?(path: string): Promise<void>; // Optional mkdir
-}
+export { IFileSystem }; // Re-export for compatibility if needed, or remove later
 
-// Default implementation using Node.js fs (for testing/CLI)
-export const nodeFileSystem: IFileSystem = {
-    readFile: async (p: string) => fs.promises.readFile(p, 'utf-8'),
-    exists: async (p: string) => {
-        try {
-            await fs.promises.access(p);
-            return true;
-        } catch {
-            return false;
-        }
-    },
-    writeFile: async (p: string, c: string) => fs.promises.writeFile(p, c, 'utf-8'),
-    mkdir: async (p: string) => fs.promises.mkdir(p, { recursive: true }).then(() => {})
-};
-
-export class RustParser {
+export class RustParser implements IProjectParser {
     private fileSystem: IFileSystem;
     private conflicts: Conflict[] = [];
 
@@ -35,7 +14,9 @@ export class RustParser {
 
     async parse(filePath: string): Promise<ParseResult> {
         this.conflicts = [];
-        const root = await this.parseFile(filePath, 'lib', 'core');
+        // Determine root name from file path (e.g. lib.rs -> lib, main.rs -> main)
+        const name = path.basename(filePath, '.rs');
+        const root = await this.parseFile(filePath, name, 'core');
         return { root, conflicts: this.conflicts };
     }
 

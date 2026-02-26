@@ -1,8 +1,12 @@
 
-import { RustParser, nodeFileSystem } from './rust-parser';
+import { ParserFactory } from './parsers/factory';
+import { nodeFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
 import { BlockManager } from './block-manager';
 import { CargoManager } from './cargo-manager';
+import { AiContextGenerator } from './generators/ai-context-generator';
+import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
+import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
 
@@ -91,9 +95,8 @@ async function main() {
 
     console.log(`Analyzing: ${libPath} (Depth: ${maxDepth === Infinity ? 'Full' : maxDepth})`);
 
-    const parser = new RustParser(nodeFileSystem);
-
     try {
+        const parser = ParserFactory.getParserForFile(libPath, nodeFileSystem);
         // 1. Parse Modules
         const result = await parser.parse(libPath);
 
@@ -105,6 +108,21 @@ async function main() {
         // 2. Build Graph
         const builder = new GraphBuilder();
         const graph = builder.build(result.root, maxDepth);
+
+        // 2b. Global Analysis
+        const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+
+        // 2c. Pattern Analysis
+        const patternAnalyzer = new PatternAnalyzer(nodeFileSystem);
+        const patternConflicts = await patternAnalyzer.analyze(graph);
+
+        const allExtras = [...globalConflicts, ...patternConflicts];
+
+        if (graph.conflicts) {
+            graph.conflicts.push(...allExtras);
+        } else {
+            graph.conflicts = allExtras;
+        }
 
         console.log('\n--- Block Graph ---');
         console.log(`Nodes: ${graph.nodes.length}`);
@@ -140,6 +158,14 @@ async function main() {
                     console.log(`  💡 Fix: ${c.suggestedFix}`);
                 }
             });
+        }
+
+        // Generate Context
+        if (args.includes('--context')) {
+            const context = AiContextGenerator.generate(graph, path.basename(libPath));
+            const contextPath = path.join(path.dirname(libPath), 'project-context.md');
+            await nodeFileSystem.writeFile(contextPath, context);
+            console.log(`\n📄 Generated AI Context at: ${contextPath}`);
         }
 
     } catch (err: any) {
