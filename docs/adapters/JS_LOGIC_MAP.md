@@ -1,10 +1,10 @@
 # 📜 JavaScript Logic & Async Map (JS Adapter)
 
-**Stato Semafori JS:**
-- `[ ]` : Script Vuoto / Scheletro
-- `[/]` : In Sviluppo (Callback Hell Risk)
-- `[X]` : Testato (Jest Pass / ESLint Clean)
-- `[!]` : Errore Runtime (Undefined is not a function)
+**JS Traffic Light Status:**
+- `[ ]` : Empty Script / Skeleton
+- `[/]` : In Development (Callback Hell Risk)
+- `[X]` : Tested (Jest Pass / ESLint Clean)
+- `[!]` : Runtime Error (Undefined is not a function)
 
 ---
 
@@ -13,17 +13,17 @@ app_root (JS_Core)
 ├── [X] Modules (ESM / CommonJS)
 ├── [/] Service_Layer (Sub-module)
 │   ├── [X] Data_Fetcher
-│   ├── [/] Processor [! Errore: Promise non gestita]
+│   ├── [/] Processor [! Error: Unhandled promise]
 │   └── [ ] Logger
 └── [ ] UI_Components (React/Vue/Vanilla)
 
 ---
 
 ## 🧪 Async & Scope Guard
-**Regole per l'AI:**
-1. **Async/Await:** Preferire `async/await` rispetto alle catene di `new Promise` o callback annidate.
-2. **Scope Safety:** Segnalare l'uso di `var` come deprecato; suggerire `const` o `let`.
-3. **Error Handling:** Ogni blocco `await` deve essere avvolto in un `try/catch` o avere un `.catch()`.
+**AI Rules:**
+1. **Async/Await:** Prefer `async/await` over `new Promise` chains or nested callbacks.
+2. **Scope Safety:** Flag `var` usage as deprecated; suggest `const` or `let`.
+3. **Error Handling:** Every `await` block must be wrapped in a `try/catch` or have a `.catch()`.
 
 ---
 
@@ -31,4 +31,4 @@ app_root (JS_Core)
 [package.json]
 ├── [X] Scripts (start, test, build)
 ├── [/] Dependencies (express, lodash)
-└── [!] Conflict_Check: Versioni obsolete o vulnerabili (npm audit).
+└── [!] Conflict_Check: Obsolete or vulnerable versions (npm audit).

@@ -1,10 +1,10 @@
 # 🐹 Go Logic & Concurrency Map (Go Adapter)
 
-**Stato Semafori Go:**
+**Go Traffic Light Status:**
 - `[ ]` : Interface Definition
 - `[/]` : Implementation (Struct Method)
-- `[X]` : Validato (Go Test Pass / Race Detector Clean)
-- `[!]` : Conflitto Critico (Deadlock / Panic Risk)
+- `[X]` : Validated (Go Test Pass / Race Detector Clean)
+- `[!]` : Critical Conflict (Deadlock / Panic Risk)
 
 ---
 
@@ -13,17 +13,17 @@ app_root (Go_Core)
 ├── [X] Interfaces (pkg/types)
 ├── [/] API_Server (Sub-module)
 │   ├── [X] Middleware
-│   ├── [/] Handlers [! Errore: Goroutine leak possibile]
+│   ├── [/] Handlers [! Error: Possible goroutine leak]
 │   └── [ ] Repository
 └── [ ] CLI_Tool (cmd/app)
 
 ---
 
 ## ⚡ Concurrency & Channels Guard
-**Regole per l'AI:**
-1. **Goroutines:** Ogni `go func()` deve avere un meccanismo di chiusura (Context o WaitGroup) per prevenire leak.
-2. **Channels:** L'uso di canali unbuffered deve essere verificato per evitare Deadlock in scenari sincroni.
-3. **Error Handling:** Ogni funzione che ritorna `error` deve essere controllata (`if err != nil`).
+**AI Rules:**
+1. **Goroutines:** Each `go func()` must have a shutdown mechanism (Context or WaitGroup) to prevent leaks.
+2. **Channels:** Use of unbuffered channels must be verified to avoid Deadlocks in synchronous scenarios.
+3. **Error Handling:** Every function returning `error` must be checked (`if err != nil`).
 
 ---
 
@@ -31,4 +31,4 @@ app_root (Go_Core)
 [go.mod / go.sum]
 ├── [X] Module_Name (github.com/user/project)
 ├── [/] Direct_Dependencies (gin, gorm)
-└── [!] Conflict_Check: Version mismatch su librerie indirette.
+└── [!] Conflict_Check: Version mismatch on indirect libraries.

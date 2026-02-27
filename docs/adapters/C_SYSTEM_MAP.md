@@ -1,28 +1,28 @@
 # 🔨 C Architecture & Memory Map (C Adapter)
 
-**Stato Semafori C:**
-- `[ ]` : Nodo Inerte (Header .h)
-- `[/]` : Implementazione in corso (.c)
-- `[X]` : Validato (No Memory Leaks / Compilato)
-- `[!]` : Conflitto Critico (Dangling Pointer / Linker Error)
+**C Traffic Light Status:**
+- `[ ]` : Inert Node (Header .h)
+- `[/]` : Implementation in progress (.c)
+- `[X]` : Validated (No Memory Leaks / Compiled)
+- `[!]` : Critical Conflict (Dangling Pointer / Linker Error)
 
 ---
 
 ## 🏗️ C Structural Tree (Headers & Links)
 root (Core_C)
 ├── [X] Types_Definition (.h)
-├── [/] Hardware_Interface (Sottoblocco)
+├── [/] Hardware_Interface (Sub-block)
 │   ├── [X] Driver_Wrapper
-│   └── [!] Buffer_Manager [! Errore: Possibile buffer overflow]
-└── [ ] Math_Lib (Sottoblocco)
+│   └── [!] Buffer_Manager [! Error: Possible buffer overflow]
+└── [ ] Math_Lib (Sub-block)
 
 ---
 
 ## 🧠 Memory & Ownership Audit (C Specific)
-**Regole per l'AI:**
-1. **Puntatori:** Se un blocco alloca memoria con `malloc`, l'AI deve verificare la presenza di una corrispondente `free`.
-2. **Buffer Safety:** L'uso di `strcpy` o `sprintf` deve essere segnalato come rischioso; suggerire `strncpy` o `snprintf`.
-3. **Linker Sync:** L'AI deve verificare che ogni funzione dichiarata nel `.h` abbia una implementazione nel `.c` per prevenire "Undefined Reference".
+**AI Rules:**
+1. **Pointers:** If a block allocates memory with `malloc`, the AI must verify the presence of a corresponding `free`.
+2. **Buffer Safety:** Using `strcpy` or `sprintf` must be flagged as risky; suggest `strncpy` or `snprintf`.
+3. **Linker Sync:** The AI must verify that every function declared in the `.h` has an implementation in the `.c` to prevent "Undefined Reference".
 
 ---
 

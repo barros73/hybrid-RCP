@@ -1,28 +1,28 @@
 # 🛠️ C++ Architecture & Memory Map (C++ Adapter)
 
-**Stato Semafori C++:**
-- `[ ]` : Nodo Inerte (Solo Header)
-- `[/]` : Implementazione in corso (.cpp)
-- `[X]` : Validato (No Memory Leaks / Compilato)
-- `[!]` : Conflitto Critico (Dangling Pointer / Linker Error)
+**C++ Traffic Light Status:**
+- `[ ]` : Inert Node (Header only)
+- `[/]` : Implementation in progress (.cpp)
+- `[X]` : Validated (No Memory Leaks / Compiled)
+- `[!]` : Critical Conflict (Dangling Pointer / Linker Error)
 
 ---
 
 ## 🏗️ C++ Structural Tree (Headers & Links)
 root (Core_CPP)
 ├── [X] Types_Definition (.hpp)
-├── [/] Hardware_Interface (Sottoblocco)
+├── [/] Hardware_Interface (Sub-block)
 │   ├── [X] Driver_Wrapper
-│   └── [!] Memory_Pool [! Errore: Possibile doppia deallocazione]
-└── [ ] Math_Engine (Sottoblocco)
+│   └── [!] Memory_Pool [! Error: Possible double free]
+└── [ ] Math_Engine (Sub-block)
 
 ---
 
 ## 🧠 Memory & Ownership Audit (C++ Specific)
-**Regole per l'AI:**
-1. **Puntatori:** Se un blocco passa un `raw pointer (*)`, l'AI deve suggerire la conversione in `std::unique_ptr` o `std::shared_ptr`.
-2. **RAII:** Ogni risorsa (file, socket, memoria) deve essere associata a un distruttore di blocco.
-3. **Linker Sync:** L'AI deve verificare che ogni funzione dichiarata nel `.h` abbia una controparte nel `.cpp` per prevenire "Undefined Reference".
+**AI Rules:**
+1. **Pointers:** If a block passes a `raw pointer (*)`, the AI must suggest converting it to `std::unique_ptr` or `std::shared_ptr`.
+2. **RAII:** Each resource (file, socket, memory) must be associated with a block destructor.
+3. **Linker Sync:** The AI must verify that every function declared in the `.h` has a counterpart in the `.cpp` to prevent "Undefined Reference".
 
 ---
 
