@@ -1,6 +1,5 @@
 node_modules/
 dist/
-test-workspace/
-node_modules/
-dist/
-out/
+.vscode-test/
+*.log
+.DS_Store

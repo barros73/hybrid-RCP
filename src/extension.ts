@@ -83,21 +83,21 @@ class HybridRstPanel {
         }));
 
         const edges = graph.edges.map((e, i) => {
-             let color = '#888';
-             if (e.type === 'immutable') color = '#4caf50'; // Green
-             if (e.type === 'mutable') color = '#ffeb3b'; // Yellow
-             if (e.type === 'conflict') color = '#f44336'; // Red
-             if (e.type === 'ownership') color = '#2196f3'; // Blue
+            let color = '#888';
+            if (e.type === 'immutable') color = '#4caf50'; // Green
+            if (e.type === 'mutable') color = '#ffeb3b'; // Yellow
+            if (e.type === 'conflict') color = '#f44336'; // Red
+            if (e.type === 'ownership') color = '#2196f3'; // Blue
 
-             return {
-                 data: {
-                     id: `e${i}`,
-                     source: e.from,
-                     target: e.to,
-                     label: e.label || '',
-                     color: color
-                 }
-             };
+            return {
+                data: {
+                    id: `e${i}`,
+                    source: e.from,
+                    target: e.to,
+                    label: e.label || '',
+                    color: color
+                }
+            };
         });
 
         const elements = JSON.stringify([...nodes, ...edges]);
@@ -333,9 +333,12 @@ export function activate(context: vscode.ExtensionContext) {
                 graph.conflicts = allExtras;
             }
 
+            const hybridDir = path.join(rootPath, '.hybrid');
+            if (!await fsAdapter.exists(hybridDir)) await fsAdapter.mkdir(hybridDir);
+
             // 2. Generate JSON Structure
             const structureJson = JSON.stringify(graph, null, 2);
-            const jsonPath = path.join(rootPath, 'project-structure.json');
+            const jsonPath = path.join(hybridDir, 'project-structure.json');
             await vscode.workspace.fs.writeFile(vscode.Uri.file(jsonPath), Buffer.from(structureJson));
 
             // 3. Generate Conflicts Report (Markdown)
@@ -362,13 +365,13 @@ export function activate(context: vscode.ExtensionContext) {
                 });
             }
 
-            const reportPath = path.join(rootPath, 'conflicts-report.md');
+            const reportPath = path.join(hybridDir, 'conflicts-report.md');
             const reportUri = vscode.Uri.file(reportPath);
             await vscode.workspace.fs.writeFile(reportUri, Buffer.from(conflictsMd));
 
             // 4. Generate AI Context
             const aiContext = AiContextGenerator.generate(graph, path.basename(rootPath));
-            const aiContextPath = path.join(rootPath, 'project-context.md');
+            const aiContextPath = path.join(hybridDir, 'project-context.md');
             await vscode.workspace.fs.writeFile(vscode.Uri.file(aiContextPath), Buffer.from(aiContext));
 
             vscode.window.showInformationMessage(`Analysis complete! Reports generated: project-structure.json, conflicts-report.md, project-context.md`);
@@ -484,4 +487,4 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(analyzeLockDisposable);
 }
 
-export function deactivate() {}
+export function deactivate() { }

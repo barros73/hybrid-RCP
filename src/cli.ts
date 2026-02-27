@@ -1,3 +1,20 @@
+#!/usr/bin/env node
+/*
+ * Hybrid-RCP - Visual & Semantic Code Orchestrator
+ * Copyright 2026 Fabrizio Baroni
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 import { ParserFactory } from './parsers/factory';
 import { nodeFileSystem } from './utils/filesystem';
@@ -9,19 +26,60 @@ import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
 import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
+import * as fs from 'fs';
+
+/**
+ * Recursively walks through the directory, parsing all Rust files found.
+ * 
+ * @param dir The directory to scan.
+ * @param nodes The collection of parsed nodes to populate.
+ * @param parser The Rust parser instance.
+ * @param progress Callback to report file processing.
+ */
+const walkProject = async (dir: string, nodes: any[], parser: any, progress?: (file: string) => void) => {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+        const fullPath = path.join(dir, file);
+        const stats = fs.statSync(fullPath);
+
+        // Skip common build and version control directories
+        if (stats.isDirectory() && !['target', '.git', 'node_modules', '.hybrid'].includes(file)) {
+            await walkProject(fullPath, nodes, parser, progress);
+        } else if (file.endsWith('.rs')) {
+            if (progress) progress(fullPath);
+            try {
+                // Parse the Rust file using the ecosystem's native parser
+                const result = await parser.parse(fullPath);
+                nodes.push({
+                    id: fullPath,
+                    type: result.root.type,
+                    filePath: fullPath,
+                    outputs: result.root.outputs,
+                    data: result.root.data
+                });
+            } catch (e) {
+                // Silently skip files that fail to parse (e.g., malformed Rust)
+            }
+        }
+    }
+};
 
 async function main() {
+    // ... (keep usage and analyze-lock as is)
     const args = process.argv.slice(2);
     if (args.length === 0) {
         console.error('Usage:');
         console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs>');
         console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder>');
         console.error('  Lock:    ts-node src/cli.ts analyze-lock <path-to-Cargo.lock>');
+        console.error('  Export:  ts-node src/cli.ts export-structure <workspace-root>');
         process.exit(1);
     }
 
     const command = args[0];
 
+    // Command: analyze-lock
+    // Analyzes Cargo.lock for dependency conflicts
     if (command === 'analyze-lock') {
         const lockPath = path.resolve(args[1]);
         const cargoManager = new CargoManager(nodeFileSystem);
@@ -50,6 +108,8 @@ async function main() {
         return;
     }
 
+    // Command: create
+    // Creates a new block (file or folder) in the project structure
     if (command === 'create') {
         if (args.length < 4) {
             console.error('Usage: create <parent-file> <block-name> <type:file|folder>');
@@ -76,7 +136,51 @@ async function main() {
         return;
     }
 
-    // Default to 'analyze' if no command or explicit 'analyze'
+    // Command: export-structure
+    // Recursively scans the project and exports a high-resolution RCP structure JSON
+    if (command === 'export-structure') {
+        const rootPath = path.resolve(args[1] || process.cwd());
+        console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
+
+        // Dynamic import of RustParser to avoid circular dependencies if any
+        const RustParser = require('./parsers/rust-parser').RustParser;
+        const parser = new RustParser(nodeFileSystem);
+        const nodes: any[] = [];
+        let count = 0;
+
+        try {
+            // Perform the recursive scan
+            await walkProject(rootPath, nodes, parser, (file) => {
+                count++;
+                if (count % 10 === 0) {
+                    process.stdout.write(`\r🔍 Scanned ${count} Rust files...`);
+                }
+            });
+            process.stdout.write(`\n`);
+
+            const structure = {
+                project: path.basename(rootPath),
+                version: "1.0.0",
+                timestamp: new Date().toISOString(),
+                nodes: nodes,
+                edges: [] // Edges are derived during synchronization/analysis
+            };
+
+            const hybridDir = path.join(rootPath, '.hybrid');
+            if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir);
+
+            const outputPath = path.join(hybridDir, 'hybrid-rcp.json');
+            fs.writeFileSync(outputPath, JSON.stringify(structure, null, 2));
+            console.log(`✅ Exported ${nodes.length} nodes to ${outputPath}`);
+        } catch (err: any) {
+            console.error(`❌ Error exporting structure: ${err.message}`);
+            process.exit(1);
+        }
+        return;
+    }
+
+    // Default: analyze
+    // Per-file structural analysis (backward compatibility)
     let libPath: string;
     let maxDepth = Infinity;
 
@@ -86,7 +190,7 @@ async function main() {
             maxDepth = parseInt(args[3], 10) || Infinity;
         }
     } else {
-        // Backward compatibility: if first arg is a path, treat as analyze
+        // Fallback: treat first argument as path if no explicit command
         libPath = path.resolve(args[0]);
         if (args[1] === '--depth') {
             maxDepth = parseInt(args[2], 10) || Infinity;
@@ -97,7 +201,8 @@ async function main() {
 
     try {
         const parser = ParserFactory.getParserForFile(libPath, nodeFileSystem);
-        // 1. Parse Modules
+
+        // 1. Parse individual modules
         const result = await parser.parse(libPath);
 
         if (result.conflicts.length > 0) {
@@ -105,14 +210,12 @@ async function main() {
             result.conflicts.forEach(c => console.log(`- [${c.severity}] ${c.description}`));
         }
 
-        // 2. Build Graph
+        // 2. Build the graph representation
         const builder = new GraphBuilder();
         const graph = builder.build(result.root, maxDepth);
 
-        // 2b. Global Analysis
+        // 3. Perform Global and Pattern analysis
         const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
-
-        // 2c. Pattern Analysis
         const patternAnalyzer = new PatternAnalyzer(nodeFileSystem);
         const patternConflicts = await patternAnalyzer.analyze(graph);
 
@@ -124,6 +227,7 @@ async function main() {
             graph.conflicts = allExtras;
         }
 
+        // Output results to console
         console.log('\n--- Block Graph ---');
         console.log(`Nodes: ${graph.nodes.length}`);
         console.log(`Edges: ${graph.edges.length}`);
@@ -160,7 +264,7 @@ async function main() {
             });
         }
 
-        // Generate Context
+        // Generate AI Context markdown if requested
         if (args.includes('--context')) {
             const context = AiContextGenerator.generate(graph, path.basename(libPath));
             const contextPath = path.join(path.dirname(libPath), 'project-context.md');
@@ -174,4 +278,5 @@ async function main() {
     }
 }
 
+// Start the CLI application
 main();

@@ -101,6 +101,29 @@ npx ts-node test-go-parser.ts    # Go
 npx ts-node test-js-parser.ts    # JS
 ```
 
-## Future Roadmap
+## Ecosystem Usage
 
-See [ROADMAP.md](docs/ROADMAP.md) for plans regarding Multi-User Collaboration and Bazel Integration.
+The `hybrid` ecosystem works in three stages to bridge documentation and code.
+
+### 1. Snapshot Code Structure
+Run this inside your project directory to extract the physical architecture into a high-fidelity JSON map.
+```bash
+node /path/to/hybrid-RCP/dist/cli.js export-structure .
+```
+
+### 2. Consolidate Manifest (Automatic Tree)
+This command automatically parses all Markdown files in `docs/feature_trees/` and creates a consolidated `hybrid-tree.json`. It also detects "orphan" code files not yet documented.
+```bash
+node /path/to/hybrid-TREE/dist/cli.js consolidate
+```
+
+### 3. Connect Requirements to Code
+Bridge the logical tree and the physical code structure to generate a deterministic traceability matrix.
+```bash
+node /path/to/hybrid-MATRIX/dist/cli.js connect -w .
+```
+
+---
+
+## License
+This project is licensed under the Apache License, Version 2.0.

@@ -1,3 +1,20 @@
+/*
+ * Hybrid-RCP - Visual & Semantic Code Orchestrator
+ * Copyright 2026 Fabrizio Baroni
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import * as path from 'path';
 import { BlockNode, Conflict, ParseResult, IProjectParser } from './types';
 import { IFileSystem, nodeFileSystem } from '../utils/filesystem';
@@ -118,8 +135,8 @@ export class RustParser implements IProjectParser {
 
             for (const sp of smartPointerPatterns) {
                 if (sp.pattern.test(content)) {
-                   // Just log for now, or maybe add to node info?
-                   // For now we assume if they exist, the user is doing something right.
+                    // Just log for now, or maybe add to node info?
+                    // For now we assume if they exist, the user is doing something right.
                 }
             }
 
@@ -165,24 +182,24 @@ export class RustParser implements IProjectParser {
             // 6. Detect 'mod name { ... }' (Inline modules)
             const modInlineRegex = /mod\s+(\w+)\s*\{/g;
             while ((match = modInlineRegex.exec(content)) !== null) {
-                 const modName = match[1];
-                 const lineIndex = content.substring(0, match.index).split('\n').length;
+                const modName = match[1];
+                const lineIndex = content.substring(0, match.index).split('\n').length;
 
-                 const childNode: BlockNode = {
-                     id: `${filePath}#${modName}`,
-                     name: modName,
-                     type: 'inline',
-                     filePath: filePath, // Inline modules reside in the same file
-                     startLine: lineIndex,
-                     endLine: lineIndex, // To be determined
-                     compilationCost: 10, // Minimal cost for inline modules (placeholder)
-                     children: [],
-                     imports: [],
-                     data: [],
-                     inputs: [],
-                     outputs: []
-                 };
-                 node.children.push(childNode);
+                const childNode: BlockNode = {
+                    id: `${filePath}#${modName}`,
+                    name: modName,
+                    type: 'inline',
+                    filePath: filePath, // Inline modules reside in the same file
+                    startLine: lineIndex,
+                    endLine: lineIndex, // To be determined
+                    compilationCost: 10, // Minimal cost for inline modules (placeholder)
+                    children: [],
+                    imports: [],
+                    data: [],
+                    inputs: [],
+                    outputs: []
+                };
+                node.children.push(childNode);
             }
 
         } catch (error: any) {
