@@ -65,51 +65,56 @@ const walkProject = async (dir: string, nodes: any[], parser: any, progress?: (f
 };
 
 async function main() {
-    // ... (keep usage and analyze-lock as is)
     const args = process.argv.slice(2);
+    const aiFormat = args.includes('--ai-format');
+
     if (args.length === 0) {
         console.error('Usage:');
-        console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs>');
-        console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder>');
-        console.error('  Lock:    ts-node src/cli.ts analyze-lock <path-to-Cargo.lock>');
-        console.error('  Export:  ts-node src/cli.ts export-structure <workspace-root>');
+        console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs> [--ai-format]');
+        console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder> [--ai-format]');
+        console.error('  Lock:    ts-node src/cli.ts analyze-lock <path-to-Cargo.lock> [--ai-format]');
+        console.error('  Export:  ts-node src/cli.ts export-structure <workspace-root> [--ai-format]');
         process.exit(1);
     }
 
     const command = args[0];
 
     // Command: analyze-lock
-    // Analyzes Cargo.lock for dependency conflicts
     if (command === 'analyze-lock') {
         const lockPath = path.resolve(args[1]);
         const cargoManager = new CargoManager(nodeFileSystem);
 
-        console.log(`Analyzing Cargo.lock at: ${lockPath}`);
+        if (!aiFormat) console.log(`Analyzing Cargo.lock at: ${lockPath}`);
         try {
             const depMap = await cargoManager.analyzeLockFile(lockPath);
             const conflicts = cargoManager.detectVersionConflicts(depMap);
 
-            console.log(`\n📦 Found ${depMap.size} unique dependencies.`);
-
-            if (conflicts.length > 0) {
-                console.log(`\n⚠️  Found ${conflicts.length} version conflicts:`);
-                conflicts.forEach(c => {
-                    console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
-                    if (c.suggestedFix) {
-                        console.log(`  💡 Fix: ${c.suggestedFix}`);
-                    }
-                });
+            if (aiFormat) {
+                console.log(JSON.stringify({
+                    status: 'success',
+                    dependencies: depMap.size,
+                    conflicts: conflicts.map(c => ({ severity: c.severity, msg: c.description }))
+                }));
             } else {
-                console.log('✅ No version conflicts detected.');
+                console.log(`\n📦 Found ${depMap.size} unique dependencies.`);
+                if (conflicts.length > 0) {
+                    console.log(`\n⚠️  Found ${conflicts.length} version conflicts:`);
+                    conflicts.forEach(c => {
+                        console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
+                        if (c.suggestedFix) console.log(`  💡 Fix: ${c.suggestedFix}`);
+                    });
+                } else {
+                    console.log('✅ No version conflicts detected.');
+                }
             }
         } catch (err: any) {
-            console.error(`Error analyzing lock file: ${err.message}`);
+            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            else console.error(`Error analyzing lock file: ${err.message}`);
         }
         return;
     }
 
     // Command: create
-    // Creates a new block (file or folder) in the project structure
     if (command === 'create') {
         if (args.length < 4) {
             console.error('Usage: create <parent-file> <block-name> <type:file|folder>');
@@ -119,51 +124,45 @@ async function main() {
         const blockName = args[2];
         const type = args[3] as 'file' | 'folder';
 
-        if (type !== 'file' && type !== 'folder') {
-            console.error('Type must be "file" or "folder"');
-            process.exit(1);
-        }
-
         const cargoManager = new CargoManager(nodeFileSystem);
         const manager = new BlockManager(nodeFileSystem, cargoManager, consoleUI);
         try {
             const newPath = await manager.createBlock(parentPath, blockName, type);
-            console.log(`✅ Block '${blockName}' created successfully at: ${newPath}`);
+            if (aiFormat) console.log(JSON.stringify({ status: 'success', path: newPath }));
+            else console.log(`✅ Block '${blockName}' created successfully at: ${newPath}`);
         } catch (err: any) {
-            console.error(`❌ Error creating block: ${err.message}`);
+            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            else console.error(`❌ Error creating block: ${err.message}`);
             process.exit(1);
         }
         return;
     }
 
     // Command: export-structure
-    // Recursively scans the project and exports a high-resolution RCP structure JSON
     if (command === 'export-structure') {
         const rootPath = path.resolve(args[1] || process.cwd());
-        console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
+        if (!aiFormat) console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
 
-        // Dynamic import of RustParser to avoid circular dependencies if any
         const RustParser = require('./parsers/rust-parser').RustParser;
         const parser = new RustParser(nodeFileSystem);
         const nodes: any[] = [];
         let count = 0;
 
         try {
-            // Perform the recursive scan
             await walkProject(rootPath, nodes, parser, (file) => {
                 count++;
-                if (count % 10 === 0) {
+                if (!aiFormat && count % 10 === 0) {
                     process.stdout.write(`\r🔍 Scanned ${count} Rust files...`);
                 }
             });
-            process.stdout.write(`\n`);
+            if (!aiFormat) process.stdout.write(`\n`);
 
             const structure = {
                 project: path.basename(rootPath),
                 version: "1.0.0",
                 timestamp: new Date().toISOString(),
                 nodes: nodes,
-                edges: [] // Edges are derived during synchronization/analysis
+                edges: []
             };
 
             const hybridDir = path.join(rootPath, '.hybrid');
@@ -171,9 +170,26 @@ async function main() {
 
             const outputPath = path.join(hybridDir, 'hybrid-rcp.json');
             fs.writeFileSync(outputPath, JSON.stringify(structure, null, 2));
-            console.log(`✅ Exported ${nodes.length} nodes to ${outputPath}`);
+
+            if (aiFormat) {
+                console.log(JSON.stringify({ status: 'success', nodes: nodes.length, path: outputPath }));
+            } else {
+                const reportOutput = `
+--- HYBRID RCP EXPORT REPORT ---
+✅ Exported ${nodes.length} nodes
+📂 Path: ${outputPath}
+🕒 Timestamp: ${structure.timestamp}
+--------------------------------
+`;
+                console.log(reportOutput);
+                const logPath = path.join(hybridDir, 'rcp-report.log');
+                const timestampedOutput = `[${new Date().toISOString()}]\n${reportOutput.trim()}\n\n`;
+                fs.appendFileSync(logPath, timestampedOutput);
+                console.log(`Report appended at: ${logPath}`);
+            }
         } catch (err: any) {
-            console.error(`❌ Error exporting structure: ${err.message}`);
+            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            else console.error(`❌ Error exporting structure: ${err.message}`);
             process.exit(1);
         }
         return;
@@ -269,7 +285,11 @@ async function main() {
             const context = AiContextGenerator.generate(graph, path.basename(libPath));
             const contextPath = path.join(path.dirname(libPath), 'project-context.md');
             await nodeFileSystem.writeFile(contextPath, context);
-            console.log(`\n📄 Generated AI Context at: ${contextPath}`);
+            if (!aiFormat) console.log(`\n📄 Generated AI Context at: ${contextPath}`);
+        }
+
+        if (aiFormat) {
+            console.log(JSON.stringify(graph));
         }
 
     } catch (err: any) {

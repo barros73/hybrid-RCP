@@ -50,6 +50,19 @@ Hybrid-RCP fills this gap by providing:
 
 ## Getting Started
 
+### Prerequisites
+- **Node.js**: Version 16.x or higher.
+- **npm**: Standard Node package manager.
+- **Rust Toolchain**: (Optional) Required if you are analyzing Rust projects.
+- **VS Code**: Required for the interactive Webview extension.
+
+### 🚀 Quick Installation
+For a fully automated setup of the entire Hybrid ecosystem (including RCP), run:
+```bash
+curl -sSL https://raw.githubusercontent.com/barros73/hybrid-BIM/main/install.sh | bash
+```
+
+### Manual Setup
 1.  Open a project in VS Code.
 2.  Run the command `Hybrid RCP: Analyze Project`.
 3.  Select your entry point (e.g., `src/lib.rs`, `main.cpp`, `main.go`, `app.js`) if not automatically detected.
@@ -101,27 +114,31 @@ npx ts-node test-go-parser.ts    # Go
 npx ts-node test-js-parser.ts    # JS
 ```
 
-## Ecosystem Usage
+## CLI Reference
 
-The `hybrid` ecosystem works in three stages to bridge documentation and code.
-
-### 1. Snapshot Code Structure
-Run this inside your project directory to extract the physical architecture into a high-fidelity JSON map.
+### Usage
 ```bash
-node /path/to/hybrid-RCP/dist/cli.js export-structure .
+node /path/to/hybrid-RCP/dist/cli.js <command> <path/params> [options]
 ```
 
-### 2. Consolidate Manifest (Automatic Tree)
-This command automatically parses all Markdown files in `docs/feature_trees/` and creates a consolidated `hybrid-tree.json`. It also detects "orphan" code files not yet documented.
-```bash
-node /path/to/hybrid-TREE/dist/cli.js consolidate
-```
+### Commands
+| Command | Description |
+| :--- | :--- |
+| `export-structure <root>` | Performs a recursive scan of the project and exports a high-fidelity JSON map to `.hybrid/hybrid-rcp.json`. |
+| `analyze <file>` | Performs detailed structural and ownership analysis on a single source file. |
+| `analyze-lock <file>` | Scans `Cargo.lock` for version conflicts and dependency mismatches. |
+| `create <parent> <name> <type>` | Creates a new module/block (type: `file` \| `folder`) and automatically updates the parent's `mod.rs` (if Rust). |
 
-### 3. Connect Requirements to Code
-Bridge the logical tree and the physical code structure to generate a deterministic traceability matrix.
-```bash
-node /path/to/hybrid-MATRIX/dist/cli.js connect -w .
-```
+### Options
+- `--depth <N>`: (For `analyze`) Limit the recursion depth of the dependency analysis.
+- `--context`: (For `analyze`) Generates a `project-context.md` file optimized for AI agent context (LLMs).
+
+---
+
+## Ecosystem Integration
+RCP provides the "Physical Layer" (Reality) for the Hybrid ecosystem:
+1. **Analyze Reality**: `hybrid-rcp export-structure .`
+2. **Bridge with Intent**: Use `hybrid-TREE` and `hybrid-MATRIX` to link these nodes to requirements.
 
 ---
 

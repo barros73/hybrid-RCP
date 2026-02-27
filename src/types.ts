@@ -14,12 +14,14 @@ export interface BlockNode {
   data?: BlockData[]; // Structs owned by this block
   inputs?: BlockIO[]; // What this block consumes
   outputs?: BlockIO[]; // What this block produces
+  logicHash?: string; // AST-stable identifier
 }
 
 export interface BlockData {
   name: string;
   isPublic: boolean;
   type: string; // e.g., 'struct', 'enum'
+  logicHash?: string;
 }
 
 export interface BlockIO {
@@ -28,6 +30,7 @@ export interface BlockIO {
   args?: string; // function arguments
   isMutable: boolean; // &mut T
   isReference: boolean; // &T
+  logicHash?: string;
 }
 
 export interface Connection {
