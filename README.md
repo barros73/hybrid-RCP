@@ -176,7 +176,8 @@ RCP operations (like deep systemic exports and pattern analysis) append their hi
 ## Ecosystem Integration
 RCP provides the "Physical Layer" (Reality) for the Hybrid ecosystem:
 1. **Analyze Reality**: `hybrid-rcp export-structure .`
-2. **Bridge with Intent**: Use `hybrid-TREE` and `hybrid-MATRIX` to link these nodes to requirements.
+2. **Cross-Reference**: `hybrid-MATRIX connect`
+3. **Generate Instructions**: `hybrid-MATRIX bridge`
 
 ---
 *Copyright 2026 Fabrizio Baroni. Licensed under the Apache License, Version 2.0.*
