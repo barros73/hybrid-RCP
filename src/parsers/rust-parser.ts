@@ -110,13 +110,23 @@ export class RustParser implements IProjectParser {
             imports: [],
             data: [],
             inputs: [],
-            outputs: []
+            outputs: [],
+            tags: []
         };
 
         try {
             const lines = content.split('\n');
             node.endLine = lines.length;
             node.compilationCost = lines.length; // Approximate compilation cost using LOC
+
+            // 0. Detect @MATRIX tags in comments
+            const tagRegex = /@MATRIX:\s*([^\s\n*]+)/g;
+            let tagMatch;
+            while ((tagMatch = tagRegex.exec(content)) !== null) {
+                if (node.tags && !node.tags.includes(tagMatch[1])) {
+                    node.tags.push(tagMatch[1]);
+                }
+            }
 
             // 1. Detect 'use' statements (simple regex)
             const useRegex = /use\s+([\w:{}]+);/g;

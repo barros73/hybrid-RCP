@@ -15,6 +15,7 @@ export interface BlockNode {
   inputs?: BlockIO[]; // What this block consumes
   outputs?: BlockIO[]; // What this block produces
   logicHash?: string; // AST-stable identifier
+  tags?: string[]; // Metadata tags like @MATRIX: 1.1
 }
 
 export interface BlockData {

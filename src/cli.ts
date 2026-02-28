@@ -153,19 +153,33 @@ async function main() {
         const rootPath = path.resolve(args[1] || process.cwd());
         if (!aiFormat) console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
 
-        const RustParser = require('./parsers/rust-parser').RustParser;
-        const parser = new RustParser(nodeFileSystem);
-        const nodes: any[] = [];
-        let count = 0;
+        const { HybridManager } = require('./parsers/hybrid-manager');
+        const hybridManager = new HybridManager(nodeFileSystem);
 
         try {
-            await walkProject(rootPath, nodes, parser, (file) => {
-                count++;
-                if (!aiFormat && count % 10 === 0) {
-                    process.stdout.write(`\r🔍 Scanned ${count} Rust files...`);
+            const result = await hybridManager.parse(rootPath);
+            const nodes: any[] = [];
+
+            const flatten = (node: any) => {
+                const flatNode = {
+                    id: node.id,
+                    name: node.name,
+                    type: node.type,
+                    filePath: node.filePath,
+                    logicHash: node.logicHash,
+                    outputs: node.outputs,
+                    data: node.data,
+                    tags: node.tags || []
+                };
+                nodes.push(flatNode);
+                if (node.children) {
+                    node.children.forEach((c: any) => flatten(c));
                 }
-            });
-            if (!aiFormat) process.stdout.write(`\n`);
+            };
+
+            // Flatten from virtual root children (skip virtual root itself if preferred, 
+            // but usually we want the whole tree flattened)
+            result.root.children.forEach((c: any) => flatten(c));
 
             const structure = {
                 project: path.basename(rootPath),

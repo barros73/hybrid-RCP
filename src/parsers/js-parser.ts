@@ -48,12 +48,13 @@ export class JavascriptParser implements IProjectParser {
             imports: [],
             data: [],
             inputs: [],
-            outputs: []
+            outputs: [],
+            tags: []
         };
 
         try {
             if (!await this.fileSystem.exists(filePath)) {
-                 this.conflicts.push({
+                this.conflicts.push({
                     id: `missing-file-${filePath}`,
                     description: `File not found: ${filePath}`,
                     location: { file: filePath, line: 0 },
@@ -67,6 +68,15 @@ export class JavascriptParser implements IProjectParser {
             const lines = content.split('\n');
             node.endLine = lines.length;
             node.compilationCost = lines.length;
+
+            // 0. Detect @MATRIX tags in comments (JS/TS style: // or /* */)
+            const tagRegex = /@MATRIX:\s*([^\s\n*]+)/g;
+            let tagMatch;
+            while ((tagMatch = tagRegex.exec(content)) !== null) {
+                if (node.tags && !node.tags.includes(tagMatch[1])) {
+                    node.tags.push(tagMatch[1]);
+                }
+            }
 
             // 1. Detect Imports (ESM / CommonJS)
             // import ... from '...'
@@ -83,19 +93,35 @@ export class JavascriptParser implements IProjectParser {
                 node.imports.push(cjsMatch[1]);
             }
 
-            // 2. Detect Classes (Data)
-            const classRegex = /^class\s+(\w+)/gm;
+            // 2. Detect Classes (Data) and their members
+            const classRegex = /^class\s+(\w+)\s*{?/gm;
             let classMatch;
             while ((classMatch = classRegex.exec(content)) !== null) {
+                const className = classMatch[1];
                 node.data?.push({
-                    name: classMatch[1],
-                    isPublic: true, // Assuming exports for now, heuristic
+                    name: className,
+                    isPublic: true,
                     type: 'class'
+                });
+
+                // Simple regex to find properties and methods within the class
+                // We find the class body (simplistic level counting or regex for this MVP)
+                // For Reality Reporting, we just want to know "what's there"
+            }
+
+            // 2.1 Detect Properties (Reality Reporting: State)
+            const propRegex = /^\s*(?:p(?:ublic|rivate|rotected)\s+)?(\w+)(?:\s*:\s*([^;=]+))?(?:\s*=.*)?;/gm;
+            let propMatch;
+            while ((propMatch = propRegex.exec(content)) !== null) {
+                node.data?.push({
+                    name: propMatch[1],
+                    isPublic: !propMatch[0].includes('private'),
+                    type: propMatch[2] ? propMatch[2].trim() : 'any'
                 });
             }
 
             // 3. Detect Functions (Outputs)
-            const fnRegex = /^function\s+(\w+)\s*\(([^)]*)\)/gm;
+            const fnRegex = /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/gm;
             let fnMatch;
             while ((fnMatch = fnRegex.exec(content)) !== null) {
                 const fnName = fnMatch[1];
@@ -105,12 +131,28 @@ export class JavascriptParser implements IProjectParser {
                     type: 'function',
                     args: args,
                     isMutable: true,
-                    isReference: true // Objects in JS
+                    isReference: true
                 });
             }
 
+            // Methods inside classes or objects: foo(args) { ... } or async foo(args) { ... }
+            const methodRegex = /^\s*(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*{/gm;
+            let methodMatch;
+            while ((methodMatch = methodRegex.exec(content)) !== null) {
+                const methodName = methodMatch[1];
+                if (methodName !== 'if' && methodName !== 'for' && methodName !== 'while' && methodName !== 'switch') {
+                    node.outputs?.push({
+                        name: methodName,
+                        type: 'method',
+                        args: methodMatch[2],
+                        isMutable: true,
+                        isReference: true
+                    });
+                }
+            }
+
             // Const/Let Functions: const foo = () => ...
-            const arrowFnRegex = /const\s+(\w+)\s*=\s*(\([^)]*\)|[\w]+)\s*=>/gm;
+            const arrowFnRegex = /(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s*)?(\([^)]*\)|[\w]+)\s*=>/gm;
             let arrowMatch;
             while ((arrowMatch = arrowFnRegex.exec(content)) !== null) {
                 node.outputs?.push({
@@ -124,14 +166,14 @@ export class JavascriptParser implements IProjectParser {
 
             // 4. Async/Await & Var usage
             if (content.includes('async function') || content.includes('await ')) {
-                 // Check for try/catch inside async functions?
-                 // Heuristic: check if 'await' is used but no 'try' or '.catch'
-                 // This is simplistic regex but good for MVP
+                // Check for try/catch inside async functions?
+                // Heuristic: check if 'await' is used but no 'try' or '.catch'
+                // This is simplistic regex but good for MVP
             }
 
             const varCount = (content.match(/\bvar\s+\w+/g) || []).length;
             if (varCount > 0) {
-                 this.conflicts.push({
+                this.conflicts.push({
                     id: `var-usage-${name}`,
                     description: `Detected 'var' usage (${varCount} times). Prefer 'const' or 'let' for block scoping.`,
                     location: { file: filePath, line: 0 },
