@@ -114,24 +114,62 @@ npx ts-node test-go-parser.ts    # Go
 npx ts-node test-js-parser.ts    # JS
 ```
 
-## CLI Reference
+## 🛠️ CLI Reference & Operational Manual
 
 ### Usage
 ```bash
-node /path/to/hybrid-RCP/dist/cli.js <command> <path/params> [options]
+node dist/cli.js <command> <path/params> [options]
 ```
 
-### Commands
-| Command | Description |
-| :--- | :--- |
-| `export-structure <root>` | Performs a recursive scan of the project and exports a high-fidelity JSON map to `.hybrid/hybrid-rcp.json`. |
-| `analyze <file>` | Performs detailed structural and ownership analysis on a single source file. |
-| `analyze-lock <file>` | Scans `Cargo.lock` for version conflicts and dependency mismatches. |
-| `create <parent> <name> <type>` | Creates a new module/block (type: `file` \| `folder`) and automatically updates the parent's `mod.rs` (if Rust). |
+### Global Options
+- `--ai-format`: Hidden flag across all commands that suppresses human-readable console metrics, returning pristine JSON. Essential for M2M communication and LLM Agents ingestion.
 
-### Options
-- `--depth <N>`: (For `analyze`) Limit the recursion depth of the dependency analysis.
-- `--context`: (For `analyze`) Generates a `project-context.md` file optimized for AI agent context (LLMs).
+---
+
+### Commands Deep Dive
+
+#### 1. `export-structure` (The Mapper)
+Performs a deep, recursive semantic scan of the target workspace.
+- **Action**: Bypasses formatting (via `logicHash`), ignores build folders (`target`, `node_modules`), parses Rust (and other supported languages), and maps the abstract syntax tree into a unified graphical JSON.
+- **Output**: Generates `.hybrid/hybrid-rcp.json`, which serves as the "Reality Layer" for the MATRIX engine.
+- **Example**: `hybrid-rcp export-structure . --ai-format`
+
+#### 2. `analyze-lock` (The Dependency Auditor)
+Evaluates `Cargo.lock` or similar lockfiles for dependency hell.
+- **Action**: Computes a map of all dependencies and flags conflicting versions of the same library, providing severity ratings and suggested fixes to prevent build failures.
+- **Example**: `hybrid-rcp analyze-lock Cargo.lock`
+
+#### 3. `analyze` (The Inspector)
+Executes a highly-focused, granular architectural check on a specific file or module.
+- **Action**: Evaluates traffic-light ownership (Immutable read, Mutable write, Conflicts) and detects global architectural violations (circular paths, ODR violations).
+- **Options**:
+  - `--depth <N>`: Limits the recursion depth for dependencies.
+  - `--context`: Generates an AI-optimized `project-context.md` locally inside `.hybrid/`.
+- **Example**: `hybrid-rcp analyze src/lib.rs --context`
+
+#### 4. `create` (The Scaffolder)
+Safely engineers boilerplate logic.
+- **Action**: Instantiates a new file or folder (`mod.rs`) construct while guaranteeing that the parent files are securely updated with the proper export statements, preventing orphan code logic.
+- **Example**: `hybrid-rcp create src/network handler file`
+
+---
+
+## 📜 Global Ecosystem Logging (Audit Trail)
+
+RCP operations (like deep systemic exports and pattern analysis) append their historical activity to a centralized execution ledger.
+
+**Log Location:**
+**`📁 .hybrid/rcp-report.log`**
+
+**Example Log Entry:**
+```text
+[2026-02-28T14:43:00.000Z] COMMAND: export-structure
+--- HYBRID RCP EXPORT REPORT ---
+✅ Exported 152 nodes
+📂 Path: /project/.hybrid/hybrid-rcp.json
+🕒 Timestamp: 2026-02-28T14:43:00.000Z
+--------------------------------
+```
 
 ---
 
@@ -141,6 +179,4 @@ RCP provides the "Physical Layer" (Reality) for the Hybrid ecosystem:
 2. **Bridge with Intent**: Use `hybrid-TREE` and `hybrid-MATRIX` to link these nodes to requirements.
 
 ---
-
-## License
-This project is licensed under the Apache License, Version 2.0.
+*Copyright 2026 Fabrizio Baroni. Licensed under the Apache License, Version 2.0.*

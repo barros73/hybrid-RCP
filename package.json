@@ -1,7 +1,7 @@
 {
   "name": "hybrid-rcp",
   "displayName": "Hybrid RCP",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "engines": {
     "vscode": "^1.74.0"
   },

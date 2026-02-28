@@ -28,6 +28,14 @@ import { consoleUI } from './ui-interface';
 import * as path from 'path';
 import * as fs from 'fs';
 
+function appendLog(cmd: string, message: string, workDir: string = process.cwd()): void {
+    const hybridDir = path.join(workDir, '.hybrid');
+    if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir, { recursive: true });
+    const logPath = path.join(hybridDir, 'rcp-report.log');
+    const timestampedOutput = `[${new Date().toISOString()}] COMMAND: ${cmd}\n${message.trim()}\n\n`;
+    fs.appendFileSync(logPath, timestampedOutput);
+}
+
 /**
  * Recursively walks through the directory, parsing all Rust files found.
  * 
@@ -42,8 +50,9 @@ const walkProject = async (dir: string, nodes: any[], parser: any, progress?: (f
         const fullPath = path.join(dir, file);
         const stats = fs.statSync(fullPath);
 
-        // Skip common build and version control directories
-        if (stats.isDirectory() && !['target', '.git', 'node_modules', '.hybrid'].includes(file)) {
+        // Skip common build, version control, and temporary directories
+        const ignoreDirs = ['target', '.git', 'node_modules', '.hybrid', '.gemini', 'dist', 'build', 'out'];
+        if (stats.isDirectory() && !ignoreDirs.includes(file)) {
             await walkProject(fullPath, nodes, parser, progress);
         } else if (file.endsWith('.rs')) {
             if (progress) progress(fullPath);
@@ -54,6 +63,7 @@ const walkProject = async (dir: string, nodes: any[], parser: any, progress?: (f
                     id: fullPath,
                     type: result.root.type,
                     filePath: fullPath,
+                    logicHash: result.root.logicHash,
                     outputs: result.root.outputs,
                     data: result.root.data
                 });
@@ -166,13 +176,15 @@ async function main() {
             };
 
             const hybridDir = path.join(rootPath, '.hybrid');
-            if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir);
+            if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir, { recursive: true });
 
             const outputPath = path.join(hybridDir, 'hybrid-rcp.json');
             fs.writeFileSync(outputPath, JSON.stringify(structure, null, 2));
 
             if (aiFormat) {
-                console.log(JSON.stringify({ status: 'success', nodes: nodes.length, path: outputPath }));
+                const out = JSON.stringify({ status: 'success', nodes: nodes.length, path: outputPath });
+                console.log(out);
+                appendLog('export-structure', out, rootPath);
             } else {
                 const reportOutput = `
 --- HYBRID RCP EXPORT REPORT ---
@@ -182,10 +194,7 @@ async function main() {
 --------------------------------
 `;
                 console.log(reportOutput);
-                const logPath = path.join(hybridDir, 'rcp-report.log');
-                const timestampedOutput = `[${new Date().toISOString()}]\n${reportOutput.trim()}\n\n`;
-                fs.appendFileSync(logPath, timestampedOutput);
-                console.log(`Report appended at: ${logPath}`);
+                appendLog('export-structure', reportOutput, rootPath);
             }
         } catch (err: any) {
             if (aiFormat) console.log(JSON.stringify({ error: err.message }));
@@ -283,13 +292,20 @@ async function main() {
         // Generate AI Context markdown if requested
         if (args.includes('--context')) {
             const context = AiContextGenerator.generate(graph, path.basename(libPath));
-            const contextPath = path.join(path.dirname(libPath), 'project-context.md');
+            const baseDir = path.dirname(libPath);
+            const hybridDir = path.join(baseDir, '.hybrid');
+            if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir, { recursive: true });
+            const contextPath = path.join(hybridDir, 'project-context.md');
             await nodeFileSystem.writeFile(contextPath, context);
             if (!aiFormat) console.log(`\n📄 Generated AI Context at: ${contextPath}`);
         }
 
         if (aiFormat) {
-            console.log(JSON.stringify(graph));
+            const out = JSON.stringify(graph);
+            console.log(out);
+            appendLog('analyze', out);
+        } else {
+            appendLog('analyze', `Analyzed ${libPath}. Found ${graph.nodes.length} nodes and ${graph.edges.length} edges.`);
         }
 
     } catch (err: any) {
