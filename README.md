@@ -139,6 +139,13 @@ Evaluates `Cargo.lock` or similar lockfiles for dependency hell.
 - **Action**: Computes a map of all dependencies and flags conflicting versions of the same library, providing severity ratings and suggested fixes to prevent build failures.
 - **Example**: `hybrid-rcp analyze-lock Cargo.lock`
 
+#### 🔮 Upcoming AST Semantic Enhancements (For AI Context)
+To provide true "Super-Context" to LLM Agents, the RCP parser is expanding its extraction schema for `hybrid-rcp.json`. The next iteration will extract:
+1.  **Endpoints & Signatures**: Public methods, properties, and I/O types (e.g., `fetchMarket(symbol: string): Promise<MarketData>`).
+2.  **Memory Constraints**: Rust Borrowing/Lifetimes and encapsulated private imports to prevent AI hallucination of concurrent logic.
+3.  **Real AST Edges**: Direct parsing of file `imports` to populate the `edges` array (e.g., `CoreAggregator` -> `UsMarketPoller`), enabling 3D Graph visualization and "Next Best Action" matrix calculations.
+4.  **`logicHash` Injection**: A condensed MD5 of the raw structural code, used by `hybrid-matrix simulate` to detect if AI patches destructively mutate the skeleton.
+
 #### 3. `analyze` (The Inspector)
 Executes a highly-focused, granular architectural check on a specific file or module.
 - **Action**: Evaluates traffic-light ownership (Immutable read, Mutable write, Conflicts) and detects global architectural violations (circular paths, ODR violations).
