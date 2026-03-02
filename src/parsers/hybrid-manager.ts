@@ -1,5 +1,5 @@
 import { IFileSystem, nodeFileSystem } from '../utils/filesystem';
-import { BlockNode, Conflict, ParseResult } from '../types';
+import { BlockNode, Conflict, ParseResult, Connection } from '../types';
 import { ParserFactory } from './factory';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -72,6 +72,7 @@ export class HybridManager {
         };
 
         const allConflicts: Conflict[] = [];
+        const allEdges: Connection[] = [];
 
         for (const entry of uniqueEntries) {
             try {
@@ -81,14 +82,17 @@ export class HybridManager {
                 // Add the project root (e.g., 'lib') as a child of the workspace
                 virtualRoot.children.push(result.root);
 
-                // Merge conflicts
+                // Merge conflicts and edges
                 allConflicts.push(...result.conflicts);
+                if (result.edges) {
+                    allEdges.push(...result.edges);
+                }
             } catch (e) {
                 console.warn(`Skipping ${entry}:`, e);
             }
         }
 
-        return { root: virtualRoot, conflicts: allConflicts };
+        return { root: virtualRoot, conflicts: allConflicts, edges: allEdges };
     }
 
     private async deepScan(dir: string): Promise<string[]> {

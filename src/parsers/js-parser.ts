@@ -1,10 +1,12 @@
 import * as path from 'path';
-import { BlockNode, Conflict, ParseResult, IProjectParser } from './types';
+import * as crypto from 'crypto';
+import { BlockNode, Conflict, ParseResult, IProjectParser, Connection } from './types';
 import { IFileSystem, nodeFileSystem } from '../utils/filesystem';
 
 export class JavascriptParser implements IProjectParser {
     private fileSystem: IFileSystem;
     private conflicts: Conflict[] = [];
+    private edges: Connection[] = [];
     private visited: Set<string> = new Set();
 
     constructor(fileSystem: IFileSystem = nodeFileSystem) {
@@ -13,10 +15,11 @@ export class JavascriptParser implements IProjectParser {
 
     async parse(filePath: string): Promise<ParseResult> {
         this.conflicts = [];
+        this.edges = [];
         this.visited.clear();
         const name = path.basename(filePath, path.extname(filePath));
         const root = await this.parseFile(filePath, name, 'core');
-        return { root, conflicts: this.conflicts };
+        return { root, conflicts: this.conflicts, edges: this.edges };
     }
 
     private async parseFile(filePath: string, name: string, type: 'core' | 'file' | 'folder' | 'inline'): Promise<BlockNode> {
@@ -69,6 +72,10 @@ export class JavascriptParser implements IProjectParser {
             node.endLine = lines.length;
             node.compilationCost = lines.length;
 
+            // Generate Logic Hash (strip comments and whitespace)
+            const normalizedContent = content.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, '');
+            node.logicHash = crypto.createHash('md5').update(normalizedContent).digest('hex');
+
             // 0. Detect @MATRIX tags in comments (JS/TS style: // or /* */)
             const tagRegex = /@MATRIX:\s*([^\s\n*]+)/g;
             let tagMatch;
@@ -120,15 +127,16 @@ export class JavascriptParser implements IProjectParser {
                 });
             }
 
-            // 3. Detect Functions (Outputs)
-            const fnRegex = /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/gm;
+            // 3. Detect Functions (Outputs) with improved signature matching
+            const fnRegex = /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)(?:\s*:\s*([^<{]+(?:<[^>]+>)?[^{]*))?/gm;
             let fnMatch;
             while ((fnMatch = fnRegex.exec(content)) !== null) {
                 const fnName = fnMatch[1];
-                const args = fnMatch[2];
+                const args = fnMatch[2]?.trim() || '';
+                const returnType = fnMatch[3]?.trim() || 'void';
                 node.outputs?.push({
                     name: fnName,
-                    type: 'function',
+                    type: returnType,
                     args: args,
                     isMutable: true,
                     isReference: true
@@ -205,7 +213,21 @@ export class JavascriptParser implements IProjectParser {
                         const childNode = await this.parseFile(resolvedPath, childName, 'file');
                         if (childNode.children.length > 0 || childNode.data!.length > 0 || childNode.outputs!.length > 0) {
                             node.children.push(childNode);
+                            this.edges.push({
+                                from: filePath,
+                                to: resolvedPath,
+                                type: 'immutable',
+                                label: 'import'
+                            });
                         }
+                    } else if (resolvedPath && this.visited.has(resolvedPath)) {
+                        // Edge to already visited node
+                        this.edges.push({
+                            from: filePath,
+                            to: resolvedPath,
+                            type: 'immutable',
+                            label: 'import'
+                        });
                     }
                 }
             }

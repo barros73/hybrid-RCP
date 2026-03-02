@@ -186,7 +186,7 @@ async function main() {
                 version: "1.0.0",
                 timestamp: new Date().toISOString(),
                 nodes: nodes,
-                edges: []
+                edges: result.edges || []
             };
 
             const hybridDir = path.join(rootPath, '.hybrid');

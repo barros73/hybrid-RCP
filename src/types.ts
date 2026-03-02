@@ -62,4 +62,5 @@ export interface Conflict {
 export interface ParseResult {
   root: BlockNode;
   conflicts: Conflict[];
+  edges?: Connection[];
 }
