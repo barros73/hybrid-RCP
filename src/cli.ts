@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+import { Command } from 'commander';
 import { ParserFactory } from './parsers/factory';
 import { nodeFileSystem } from './utils/filesystem';
 import { GraphBuilder } from './graph-builder';
@@ -27,6 +28,16 @@ import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { consoleUI } from './ui-interface';
 import * as path from 'path';
 import * as fs from 'fs';
+
+const program = new Command();
+
+program
+    .name('hybrid-rcp')
+    .description('Layer 3 of the Hybrid Ecosystem: Reality Check Procedure')
+    .version('0.6.1');
+
+program
+    .option('--ai-format', 'Output in machine-readable JSON format');
 
 function appendLog(cmd: string, message: string, workDir: string = process.cwd()): void {
     const hybridDir = path.join(workDir, '.hybrid');
@@ -74,32 +85,20 @@ const walkProject = async (dir: string, nodes: any[], parser: any, progress?: (f
     }
 };
 
-async function main() {
-    const args = process.argv.slice(2);
-    const aiFormat = args.includes('--ai-format');
-
-    if (args.length === 0) {
-        console.error('Usage:');
-        console.error('  Analyze: ts-node src/cli.ts analyze <path-to-lib.rs> [--ai-format]');
-        console.error('  Create:  ts-node src/cli.ts create <parent-file> <block-name> <type:file|folder> [--ai-format]');
-        console.error('  Lock:    ts-node src/cli.ts analyze-lock <path-to-Cargo.lock> [--ai-format]');
-        console.error('  Export:  ts-node src/cli.ts export-structure <workspace-root> [--ai-format]');
-        process.exit(1);
-    }
-
-    const command = args[0];
-
-    // Command: analyze-lock
-    if (command === 'analyze-lock') {
-        const lockPath = path.resolve(args[1]);
+program
+    .command('analyze-lock <lockPath>')
+    .description('Analyze Cargo.lock for version conflicts')
+    .action(async (lockPath) => {
+        const options = program.opts();
+        const fullLockPath = path.resolve(lockPath);
         const cargoManager = new CargoManager(nodeFileSystem);
 
-        if (!aiFormat) console.log(`Analyzing Cargo.lock at: ${lockPath}`);
+        if (!options.aiFormat) console.log(`Analyzing Cargo.lock at: ${fullLockPath}`);
         try {
-            const depMap = await cargoManager.analyzeLockFile(lockPath);
+            const depMap = await cargoManager.analyzeLockFile(fullLockPath);
             const conflicts = cargoManager.detectVersionConflicts(depMap);
 
-            if (aiFormat) {
+            if (options.aiFormat) {
                 console.log(JSON.stringify({
                     status: 'success',
                     dependencies: depMap.size,
@@ -118,40 +117,42 @@ async function main() {
                 }
             }
         } catch (err: any) {
-            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            if (options.aiFormat) console.log(JSON.stringify({ error: err.message }));
             else console.error(`Error analyzing lock file: ${err.message}`);
         }
-        return;
-    }
+    });
 
-    // Command: create
-    if (command === 'create') {
-        if (args.length < 4) {
-            console.error('Usage: create <parent-file> <block-name> <type:file|folder>');
+program
+    .command('create <parentFile> <blockName> <type>')
+    .description('Create a new block')
+    .action(async (parentFile, blockName, type) => {
+        const options = program.opts();
+        const parentPath = path.resolve(parentFile);
+        if (type !== 'file' && type !== 'folder') {
+            console.error('Error: type must be "file" or "folder"');
             process.exit(1);
         }
-        const parentPath = path.resolve(args[1]);
-        const blockName = args[2];
-        const type = args[3] as 'file' | 'folder';
 
         const cargoManager = new CargoManager(nodeFileSystem);
         const manager = new BlockManager(nodeFileSystem, cargoManager, consoleUI);
         try {
             const newPath = await manager.createBlock(parentPath, blockName, type);
-            if (aiFormat) console.log(JSON.stringify({ status: 'success', path: newPath }));
+            if (options.aiFormat) console.log(JSON.stringify({ status: 'success', path: newPath }));
             else console.log(`✅ Block '${blockName}' created successfully at: ${newPath}`);
         } catch (err: any) {
-            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            if (options.aiFormat) console.log(JSON.stringify({ error: err.message }));
             else console.error(`❌ Error creating block: ${err.message}`);
             process.exit(1);
         }
-        return;
-    }
+    });
 
-    // Command: export-structure
-    if (command === 'export-structure') {
-        const rootPath = path.resolve(args[1] || process.cwd());
-        if (!aiFormat) console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
+program
+    .command('export-structure [rootPath]')
+    .description('Export high-resolution structure of the project')
+    .action(async (rawRootPath) => {
+        const options = program.opts();
+        const rootPath = path.resolve(rawRootPath || process.cwd());
+        if (!options.aiFormat) console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
 
         const { HybridManager } = require('./parsers/hybrid-manager');
         const hybridManager = new HybridManager(nodeFileSystem);
@@ -169,6 +170,7 @@ async function main() {
                     logicHash: node.logicHash,
                     outputs: node.outputs,
                     data: node.data,
+                    imports: node.imports || [],
                     tags: node.tags || []
                 };
                 nodes.push(flatNode);
@@ -186,7 +188,8 @@ async function main() {
                 version: "1.0.0",
                 timestamp: new Date().toISOString(),
                 nodes: nodes,
-                edges: result.edges || []
+                edges: result.edges || [],
+                conflicts: result.conflicts || []
             };
 
             const hybridDir = path.join(rootPath, '.hybrid');
@@ -195,7 +198,7 @@ async function main() {
             const outputPath = path.join(hybridDir, 'hybrid-rcp.json');
             fs.writeFileSync(outputPath, JSON.stringify(structure, null, 2));
 
-            if (aiFormat) {
+            if (options.aiFormat) {
                 const out = JSON.stringify({ status: 'success', nodes: nodes.length, path: outputPath });
                 console.log(out);
                 appendLog('export-structure', out, rootPath);
@@ -211,122 +214,95 @@ async function main() {
                 appendLog('export-structure', reportOutput, rootPath);
             }
         } catch (err: any) {
-            if (aiFormat) console.log(JSON.stringify({ error: err.message }));
+            if (options.aiFormat) console.log(JSON.stringify({ error: err.message }));
             else console.error(`❌ Error exporting structure: ${err.message}`);
             process.exit(1);
         }
-        return;
-    }
+    });
 
-    // Default: analyze
-    // Per-file structural analysis (backward compatibility)
-    let libPath: string;
-    let maxDepth = Infinity;
+program
+    .command('analyze <libPath>')
+    .description('Per-file structural analysis')
+    .option('-d, --depth <number>', 'Maximum depth for analysis', 'Infinity')
+    .option('--context', 'Generate AI Context markdown')
+    .action(async (libPath, cmdOptions) => {
+        const options = program.opts();
+        const fullLibPath = path.resolve(libPath);
+        const maxDepth = cmdOptions.depth === 'Infinity' ? Infinity : parseInt(cmdOptions.depth, 10);
 
-    if (command === 'analyze') {
-        libPath = path.resolve(args[1]);
-        if (args[2] === '--depth') {
-            maxDepth = parseInt(args[3], 10) || Infinity;
-        }
-    } else {
-        // Fallback: treat first argument as path if no explicit command
-        libPath = path.resolve(args[0]);
-        if (args[1] === '--depth') {
-            maxDepth = parseInt(args[2], 10) || Infinity;
-        }
-    }
+        if (!options.aiFormat) console.log(`Analyzing: ${fullLibPath} (Depth: ${maxDepth === Infinity ? 'Full' : maxDepth})`);
 
-    console.log(`Analyzing: ${libPath} (Depth: ${maxDepth === Infinity ? 'Full' : maxDepth})`);
+        try {
+            const parser = ParserFactory.getParserForFile(fullLibPath, nodeFileSystem);
+            const result = await parser.parse(fullLibPath);
 
-    try {
-        const parser = ParserFactory.getParserForFile(libPath, nodeFileSystem);
-
-        // 1. Parse individual modules
-        const result = await parser.parse(libPath);
-
-        if (result.conflicts.length > 0) {
-            console.log(`\n⚠️  Found ${result.conflicts.length} parser conflicts:`);
-            result.conflicts.forEach(c => console.log(`- [${c.severity}] ${c.description}`));
-        }
-
-        // 2. Build the graph representation
-        const builder = new GraphBuilder();
-        const graph = builder.build(result.root, maxDepth);
-
-        // 3. Perform Global and Pattern analysis
-        const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
-        const patternAnalyzer = new PatternAnalyzer(nodeFileSystem);
-        const patternConflicts = await patternAnalyzer.analyze(graph);
-
-        const allExtras = [...globalConflicts, ...patternConflicts];
-
-        if (graph.conflicts) {
-            graph.conflicts.push(...allExtras);
-        } else {
-            graph.conflicts = allExtras;
-        }
-
-        // Output results to console
-        console.log('\n--- Block Graph ---');
-        console.log(`Nodes: ${graph.nodes.length}`);
-        console.log(`Edges: ${graph.edges.length}`);
-
-        console.log('\nNodes:');
-        graph.nodes.forEach(n => {
-            console.log(`- [${n.type.toUpperCase()}] ${n.name} (Data: ${n.data?.length || 0}, APIs: ${n.outputs?.length || 0})`);
-            if (n.data && n.data.length > 0) {
-                n.data.forEach(d => console.log(`    Struct: ${d.name}`));
+            if (result.conflicts.length > 0 && !options.aiFormat) {
+                console.log(`\n⚠️  Found ${result.conflicts.length} parser conflicts:`);
+                result.conflicts.forEach(c => console.log(`- [${c.severity}] ${c.description}`));
             }
-            if (n.outputs && n.outputs.length > 0) {
-                n.outputs.forEach(fn => console.log(`    Fn: ${fn.name} (${fn.isMutable ? 'mut' : 'immut'})`));
-            }
-        });
 
-        console.log('\nEdges (Traffic Light):');
-        graph.edges.forEach(e => {
-            let color = '⚪';
-            if (e.type === 'immutable') color = '🟢 (Green)';
-            if (e.type === 'mutable') color = '🟡 (Yellow)';
-            if (e.type === 'ownership') color = '🔵 (Owner)';
-            if (e.type === 'conflict') color = '🔴 (Red)';
+            const builder = new GraphBuilder();
+            const graph = builder.build(result.root, maxDepth);
 
-            console.log(`${color} ${e.from.split('/').pop()} -> ${e.to.split('/').pop()} : ${e.label}`);
-        });
+            const globalConflicts = GlobalConflictAnalyzer.analyze(graph);
+            const patternAnalyzer = new PatternAnalyzer(nodeFileSystem);
+            const patternConflicts = await patternAnalyzer.analyze(graph);
+            const allExtras = [...globalConflicts, ...patternConflicts];
 
-        if (graph.conflicts && graph.conflicts.length > 0) {
-            console.log(`\n⚠️  Found ${graph.conflicts.length} structural conflicts:`);
-            graph.conflicts.forEach(c => {
-                console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
-                if (c.suggestedFix) {
-                    console.log(`  💡 Fix: ${c.suggestedFix}`);
+            if (graph.conflicts) graph.conflicts.push(...allExtras);
+            else graph.conflicts = allExtras;
+
+            if (!options.aiFormat) {
+                console.log('\n--- Block Graph ---');
+                console.log(`Nodes: ${graph.nodes.length}`);
+                console.log(`Edges: ${graph.edges.length}`);
+                console.log('\nNodes:');
+                graph.nodes.forEach(n => {
+                    console.log(`- [${n.type.toUpperCase()}] ${n.name} (Data: ${n.data?.length || 0}, APIs: ${n.outputs?.length || 0})`);
+                    if (n.data && n.data.length > 0) n.data.forEach(d => console.log(`    Struct: ${d.name}`));
+                    if (n.outputs && n.outputs.length > 0) n.outputs.forEach(fn => console.log(`    Fn: ${fn.name} (${fn.isMutable ? 'mut' : 'immut'})`));
+                });
+
+                console.log('\nEdges (Traffic Light):');
+                graph.edges.forEach(e => {
+                    let color = '⚪';
+                    if (e.type === 'immutable') color = '🟢 (Green)';
+                    if (e.type === 'mutable') color = '🟡 (Yellow)';
+                    if (e.type === 'ownership') color = '🔵 (Owner)';
+                    if (e.type === 'conflict') color = '🔴 (Red)';
+                    console.log(`${color} ${e.from.split('/').pop()} -> ${e.to.split('/').pop()} : ${e.label}`);
+                });
+
+                if (graph.conflicts && graph.conflicts.length > 0) {
+                    console.log(`\n⚠️  Found ${graph.conflicts.length} structural conflicts:`);
+                    graph.conflicts.forEach(c => {
+                        console.log(`- [${c.severity.toUpperCase()}] ${c.description}`);
+                        if (c.suggestedFix) console.log(`  💡 Fix: ${c.suggestedFix}`);
+                    });
                 }
-            });
+            }
+
+            if (cmdOptions.context) {
+                const context = AiContextGenerator.generate(graph, path.basename(fullLibPath));
+                const baseDir = path.dirname(fullLibPath);
+                const hybridDir = path.join(baseDir, '.hybrid');
+                if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir, { recursive: true });
+                const contextPath = path.join(hybridDir, 'project-context.md');
+                await nodeFileSystem.writeFile(contextPath, context);
+                if (!options.aiFormat) console.log(`\n📄 Generated AI Context at: ${contextPath}`);
+            }
+
+            if (options.aiFormat) {
+                const out = JSON.stringify(graph);
+                console.log(out);
+                appendLog('analyze', out);
+            } else {
+                appendLog('analyze', `Analyzed ${fullLibPath}. Found ${graph.nodes.length} nodes and ${graph.edges.length} edges.`);
+            }
+        } catch (err: any) {
+            console.error(`Error: ${err.message}`);
+            process.exit(1);
         }
+    });
 
-        // Generate AI Context markdown if requested
-        if (args.includes('--context')) {
-            const context = AiContextGenerator.generate(graph, path.basename(libPath));
-            const baseDir = path.dirname(libPath);
-            const hybridDir = path.join(baseDir, '.hybrid');
-            if (!fs.existsSync(hybridDir)) fs.mkdirSync(hybridDir, { recursive: true });
-            const contextPath = path.join(hybridDir, 'project-context.md');
-            await nodeFileSystem.writeFile(contextPath, context);
-            if (!aiFormat) console.log(`\n📄 Generated AI Context at: ${contextPath}`);
-        }
-
-        if (aiFormat) {
-            const out = JSON.stringify(graph);
-            console.log(out);
-            appendLog('analyze', out);
-        } else {
-            appendLog('analyze', `Analyzed ${libPath}. Found ${graph.nodes.length} nodes and ${graph.edges.length} edges.`);
-        }
-
-    } catch (err: any) {
-        console.error(`Error: ${err.message}`);
-        process.exit(1);
-    }
-}
-
-// Start the CLI application
-main();
+program.parse(process.argv);

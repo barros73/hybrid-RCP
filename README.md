@@ -1,4 +1,5 @@
-# Hybrid-RCP: Visual & Semantic Orchestration (Rust, C++, Python, C, Go, JS)
+# Hybrid-RCP: v0.6.1 - 2026-03-04
+## Visual & Semantic Orchestration (Rust, C++, Python, C, Go, JS)
 
 **The missing link between Static Analysis and Architectural Clarity.**
 
@@ -24,29 +25,23 @@ Hybrid-RCP fills this gap by providing:
 ## Features
 
 -   **Multi-Language Support**:
-    -   🦀 **Rust**: Full ownership and borrow checker visualization.
-    -   ⚡ **C++**: Header/Implementation mapping (`.hpp` <-> `.cpp`) and memory management audits.
+    -   🦀 **Rust**: Comprehensive ownership analysis, `use` / `mod` dependency extraction, and borrow checker visualization.
+    -   ⚡ **C++**: Header/Implementation mapping (`.hpp` <-> `.cpp`) and memory management audits (new/delete tracking).
     -   🐍 **Python**: Module import graphs and type hinting enforcement.
-    -   🔨 **C**: `malloc`/`free` pairing checks and unsafe function detection (`strcpy`).
-    -   🐹 **Go**: Goroutine leak detection and Channel deadlock warnings.
-    -   📜 **JavaScript/TypeScript**: `var` usage audits, Module imports (ESM/CJS), and Class hierarchy.
--   **Interactive Block Graph**: Visualizes modules (Core, File, Folder, Inline) and their relationships.
--   **Traffic Light System**:
-    -   🟢 **Green**: Safe Reference / Immutable Read
-    -   🟡 **Yellow**: Mutable Write / Active Development
-    -   🔴 **Red**: Conflict / Danger Zone (Ownership Violation, Memory Leak, Race Condition)
--   **Compilation Cost Metric**: Nodes scale dynamically based on their Lines of Code (LOC).
--   **Conflict Detection**: Identifies language-specific "Red Line" violations:
-    -   **Rust**: Multiple `&mut T`.
-    -   **C/C++**: Memory Leaks (Malloc > Free), Raw Pointers.
-    -   **Go**: Unmanaged Goroutines.
-    -   **JS**: `var` scope issues.
--   **Global Conflict Detection**: Analyzes the entire workspace to find:
-    -   **Duplicate Symbols**: Functions or structs with the same name in different files (ODR violations).
-    -   **Circular Dependencies**: A -> B -> A loops that break builds.
-    -   **File Naming Collisions**: Ambiguous file names (e.g., `utils.py` in multiple folders).
--   **Hybrid Workspace Support**: Seamlessly analyzes projects mixing languages (e.g., Rust + C++ FFI, Python + C extensions) by merging them into a single "Super Graph".
--   **AI Context Generation**: Auto-generates a `project-context.md` file optimized for LLMs (Gemini, ChatGPT), providing a compact architectural map and token estimates.
+    -   🔨 **C**: `malloc`/`free` pairing checks and unsafe function detection.
+    -   📜 **JS/TS**: Module imports (ESM/CJS), Class hierarchy, and scope audits.
+-   **Architecture Conflict Detector**:
+    -   🔴 **Ownership Violations**: Detects multiple components attempting to mutate shared state (e.g., `app_state` in Rust).
+    -   🔴 **Missing Modules**: Flags `mod` declarations in Rust where the corresponding file is missing.
+    -   🟡 **Memory Safety**: Identifies manual memory management (`new`/`delete`) in C++ that should be replaced by smart pointers.
+-   **Global Dependency Mapping (The Spatial Map)**:
+    -   Extracts project-wide `imports`/`exports` to build a complete directed graph of the "Physical Reality".
+    -   Outputs `edges` in `hybrid-rcp.json` for 3D/2D graph visualization in MATRIX.
+-   **Traffic Light Ownership**:
+    -   🟢 **Green**: Stable Reference / Immutable Read.
+    -   🟡 **Yellow**: Active Development / Mutable Write.
+    -   🔴 **Red**: Conflict / Danger Zone (Ownership Violation, Memory Leak).
+-   **AI Context Generation**: Auto-generates `project-context.md` optimized for LLMs, providing a compact architectural map.
 
 ## Getting Started
 

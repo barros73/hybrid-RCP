@@ -128,11 +128,24 @@ export class RustParser implements IProjectParser {
                 }
             }
 
-            // 1. Detect 'use' statements (simple regex)
-            const useRegex = /use\s+([\w:{}]+);/g;
+            // 1. Detect 'use' statements (improved regex)
+            // Captures: use crate::..., pub use ..., use path as alias
+            const useRegex = /(?:pub\s+)?use\s+([\w:{}*,\s]+)(?:\s+as\s+\w+)?;|mod\s+(\w+)\s*;/g;
             let useMatch;
             while ((useMatch = useRegex.exec(content)) !== null) {
-                node.imports.push(useMatch[1]);
+                if (useMatch[1]) {
+                    // Normalize the import by removing whitespace and newlines
+                    const cleanedImport = useMatch[1].replace(/\s+/g, '');
+                    if (!node.imports.includes(cleanedImport)) {
+                        node.imports.push(cleanedImport);
+                    }
+                } else if (useMatch[2]) {
+                    // Also track declared modules as internal dependencies
+                    const modName = useMatch[2];
+                    if (!node.imports.includes(modName)) {
+                        node.imports.push(modName);
+                    }
+                }
             }
 
             // 2. Detect Structs (Block Data)

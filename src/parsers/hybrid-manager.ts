@@ -1,8 +1,12 @@
 import { IFileSystem, nodeFileSystem } from '../utils/filesystem';
 import { BlockNode, Conflict, ParseResult, Connection } from '../types';
 import { ParserFactory } from './factory';
+import { GraphBuilder } from '../graph-builder';
 import * as path from 'path';
 import * as fs from 'fs';
+
+// Directories to exclude from scanning — language-agnostic
+const EXCLUDED_DIRS = ['.git', 'node_modules', 'target', 'dist', 'build', 'out', '.hybrid', '.gemini', 'obj', 'bin', 'debug', 'release'];
 
 export class HybridManager {
     private fileSystem: IFileSystem;
@@ -15,41 +19,41 @@ export class HybridManager {
     async parse(rootPath: string): Promise<ParseResult> {
         const entryPoints: string[] = [];
 
-        // JS/TS (Node/NPM)
-        const packagePath = path.join(rootPath, 'package.json');
-        if (await this.fileSystem.exists(packagePath)) {
-            const indexTs = path.join(rootPath, 'src', 'index.ts');
-            const indexJs = path.join(rootPath, 'src', 'index.js');
-            const appTs = path.join(rootPath, 'src', 'app.ts');
-            if (await this.fileSystem.exists(indexTs)) entryPoints.push(indexTs);
-            else if (await this.fileSystem.exists(indexJs)) entryPoints.push(indexJs);
-            else if (await this.fileSystem.exists(appTs)) entryPoints.push(appTs);
-        }
-
-        // Fallbacks if specific files exist (C++, C, Go, JS, Py)
+        // 1. Look for standard entry points
         const candidates = [
-            'main.cpp', 'src/main.cpp',
-            'main.c', 'src/main.c',
-            'file1.c', 'file2.c', // For testing
-            'main.go', 'cmd/main.go',
-            'index.js', 'src/index.js',
-            'app.ts', 'src/app.ts',
-            'main.py', 'app.py'
+            'src/index.ts', 'src/index.js', 'src/app.ts', 'src/main.rs',
+            'main.cpp', 'src/main.cpp', 'main.c', 'src/main.c',
+            'main.go', 'cmd/main.go', 'main.py', 'app.py'
         ];
 
         for (const c of candidates) {
             const p = path.join(rootPath, c);
             if (await this.fileSystem.exists(p)) {
-                if (!entryPoints.includes(p)) entryPoints.push(p);
+                entryPoints.push(p);
             }
         }
 
-        // DEEP REALITY CRAWLER: If still 0 nodes found, scan src/ for any valid source
-        if (entryPoints.length === 0) {
-            const srcDir = path.join(rootPath, 'src');
-            if (await this.fileSystem.exists(srcDir)) {
-                const files = await this.deepScan(srcDir);
-                entryPoints.push(...files);
+        // 2. Scan src/ and crates/ for any valid source files
+        const searchDirs = ['src', 'crates'];
+        for (const dirName of searchDirs) {
+            const dirPath = path.join(rootPath, dirName);
+            if (await this.fileSystem.exists(dirPath)) {
+                const files = await this.deepScan(dirPath);
+                for (const f of files) {
+                    if (!entryPoints.includes(f)) entryPoints.push(f);
+                }
+            }
+        }
+
+        // 3. Fallback: Scan root for standalone source files
+        const rootFiles = await fs.promises.readdir(rootPath, { withFileTypes: true });
+        for (const item of rootFiles) {
+            if (!item.isDirectory()) {
+                const ext = path.extname(item.name).toLowerCase();
+                if (['.rs', '.ts', '.js', '.py'].includes(ext)) {
+                    const p = path.join(rootPath, item.name);
+                    if (!entryPoints.includes(p)) entryPoints.push(p);
+                }
             }
         }
 
@@ -72,7 +76,7 @@ export class HybridManager {
         };
 
         const allConflicts: Conflict[] = [];
-        const allEdges: Connection[] = [];
+        let allEdges: Connection[] = [];
 
         for (const entry of uniqueEntries) {
             try {
@@ -81,16 +85,17 @@ export class HybridManager {
 
                 // Add the project root (e.g., 'lib') as a child of the workspace
                 virtualRoot.children.push(result.root);
-
-                // Merge conflicts and edges
                 allConflicts.push(...result.conflicts);
-                if (result.edges) {
-                    allEdges.push(...result.edges);
-                }
             } catch (e) {
-                console.warn(`Skipping ${entry}:`, e);
+                // Silently skip unparseable files
             }
         }
+
+        // 4. Build Global Graph (The Spatial Map)
+        const builder = new GraphBuilder();
+        const graph = builder.build(virtualRoot);
+        allEdges = graph.edges;
+        if (graph.conflicts) allConflicts.push(...graph.conflicts);
 
         return { root: virtualRoot, conflicts: allConflicts, edges: allEdges };
     }
@@ -102,7 +107,7 @@ export class HybridManager {
         for (const item of items) {
             const fullPath = path.join(dir, item.name);
             if (item.isDirectory()) {
-                if (item.name !== 'node_modules' && item.name !== '.git' && item.name !== 'target') {
+                if (!EXCLUDED_DIRS.includes(item.name)) {
                     results.push(...(await this.deepScan(fullPath)));
                 }
             } else {
@@ -115,3 +120,4 @@ export class HybridManager {
         return results;
     }
 }
+

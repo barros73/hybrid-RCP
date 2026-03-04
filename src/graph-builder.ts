@@ -46,22 +46,17 @@ export class GraphBuilder {
 
             // Heuristic 1: Imports create dependencies (Green Lines by default)
             source.imports.forEach(imp => {
-                // If import is 'crate::core::Data', we look for 'core' or 'Data'
-                const parts = imp.split('::');
-                const targetName = parts[0] === 'crate' ? parts[1] : parts[0];
+                // Handle complex rust imports like core_shared::bim::{...}
+                const baseModule = imp.split('::')[0];
+                const targetName = baseModule === 'crate' ? imp.split('::')[1] : baseModule;
 
                 // Avoid self-references
                 if (targetName === source.name) return;
 
-                const target = nodeMap.get(targetName);
-                if (target) {
-                    // Check if it's a "super" reference (Sub -> Parent)
-                    if (targetName === 'super') {
-                         // Resolve parent... complex without parent link in node.
-                         // Skip for now.
-                         return;
-                    }
+                // Try to find target by name or by matching path fragment
+                const target = nodes.find(n => n.name === targetName || (n.filePath && n.filePath.includes(targetName)));
 
+                if (target && target.id !== source.id) {
                     edges.push({
                         from: source.id,
                         to: target.id,
@@ -115,12 +110,12 @@ export class GraphBuilder {
                 }
 
                 if (isMutableUsage) {
-                     // Find the existing Usage edge (not Ownership) and upgrade it
-                     const edge = edges.find(e => e.from === source.id && e.to === target.id && e.type !== 'ownership');
-                     if (edge) {
-                         edge.type = 'mutable';
-                         edge.label = `mutates ${targetName}`;
-                     }
+                    // Find the existing Usage edge (not Ownership) and upgrade it
+                    const edge = edges.find(e => e.from === source.id && e.to === target.id && e.type !== 'ownership');
+                    if (edge) {
+                        edge.type = 'mutable';
+                        edge.label = `mutates ${targetName}`;
+                    }
                 }
             });
         });
