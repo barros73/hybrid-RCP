@@ -1,7 +1,7 @@
 {
   "name": "hybrid-rcp",
   "displayName": "Hybrid RCP",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -32,6 +32,14 @@
       {
         "command": "hybrid-rcp.analyzeLock",
         "title": "Hybrid RCP: Analyze Lock File (Dependencies)"
+      },
+      {
+        "command": "hybrid-rcp.runDrift",
+        "title": "Hybrid RCP: Run Drift Analysis"
+      },
+      {
+        "command": "hybrid-rcp.mcp",
+        "title": "Hybrid RCP: Start MCP Server"
       }
     ],
     "menus": {

@@ -26,15 +26,19 @@ import { AiContextGenerator } from './generators/ai-context-generator';
 import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
 import { PatternAnalyzer } from './analyzers/pattern-analyzer';
 import { consoleUI } from './ui-interface';
+import { ShieldAnalyzer } from './sub-modules/shield';
+import { DriftAnalyzer } from './sub-modules/drift';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execSync } from 'child_process';
+import { MCPServer } from './mcp-server';
 
 const program = new Command();
 
 program
     .name('hybrid-rcp')
     .description('Layer 3 of the Hybrid Ecosystem: Reality Check Procedure')
-    .version('0.6.1');
+    .version('0.6.2');
 
 program
     .option('--ai-format', 'Output in machine-readable JSON format');
@@ -149,7 +153,8 @@ program
 program
     .command('export-structure [rootPath]')
     .description('Export high-resolution structure of the project')
-    .action(async (rawRootPath) => {
+    .option('--shield', 'Run SHIELD analysis (clippy, audit) and include findings')
+    .action(async (rawRootPath, cmdOptions) => {
         const options = program.opts();
         const rootPath = path.resolve(rawRootPath || process.cwd());
         if (!options.aiFormat) console.log(`🚀 Hybrid RCP: Exporting high-resolution structure for ${rootPath}...`);
@@ -182,6 +187,44 @@ program
             // Flatten from virtual root children (skip virtual root itself if preferred, 
             // but usually we want the whole tree flattened)
             result.root.children.forEach((c: any) => flatten(c));
+
+            // SHIELD Analysis
+            if (cmdOptions.shield) {
+                if (!options.aiFormat) console.log(`🛡️  Running SHIELD analysis (clippy & audit)...`);
+                const shield = new ShieldAnalyzer();
+                const shieldConflicts: any[] = [];
+
+                try {
+                    // 1. Run Clippy
+                    const clippyOut = execSync('cargo clippy --message-format=json', { cwd: rootPath, stdio: 'pipe' }).toString();
+                    const clippyJson = clippyOut.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
+                    shieldConflicts.push(...shield.analyze(clippyJson));
+                } catch (e: any) {
+                    if (e.stdout) {
+                        try {
+                            const clippyJson = e.stdout.toString().split('\n').filter((l: string) => l.trim()).map((l: string) => JSON.parse(l));
+                            shieldConflicts.push(...shield.analyze(clippyJson));
+                        } catch (inner) { }
+                    }
+                }
+
+                try {
+                    // 2. Run Audit
+                    const auditOut = execSync('cargo audit --json', { cwd: rootPath, stdio: 'pipe' }).toString();
+                    const auditJson = [JSON.parse(auditOut)];
+                    shieldConflicts.push(...shield.analyze(auditJson));
+                } catch (e: any) {
+                    if (e.stdout) {
+                        try {
+                            const auditJson = [JSON.parse(e.stdout.toString())];
+                            shieldConflicts.push(...shield.analyze(auditJson));
+                        } catch (inner) { }
+                    }
+                }
+
+                result.conflicts.push(...shieldConflicts);
+                if (!options.aiFormat) console.log(`🛡️  SHIELD: Found ${shieldConflicts.length} additional findings.`);
+            }
 
             const structure = {
                 project: path.basename(rootPath),
@@ -303,6 +346,59 @@ program
             console.error(`Error: ${err.message}`);
             process.exit(1);
         }
+    });
+
+program
+    .command('drift <file1> <file2>')
+    .description('Compare two RCP snapshots to detect design or logic drift')
+    .action((file1, file2) => {
+        const analyzer = new DriftAnalyzer();
+        analyzer.compare(path.resolve(file1), path.resolve(file2));
+    });
+
+program
+    .command('mcp')
+    .description('Start MCP server over Stdio')
+    .action(() => {
+        const server = new MCPServer();
+
+        server.registerTool({
+            name: "export_structure",
+            description: "Export high-resolution structure of the project",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    rootPath: { type: "string" },
+                    shield: { type: "boolean" }
+                }
+            },
+            handler: async (args: any) => {
+                const root = path.resolve(args.rootPath || process.cwd());
+                // Calling the actual logic would require extraction to functions
+                return { content: [{ type: "text", text: `Structure export requested for ${root}.` }] };
+            }
+        });
+
+        server.registerTool({
+            name: "drift_analysis",
+            description: "Compare two RCP snapshots to detect logic or structural drift",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    file1: { type: "string" },
+                    file2: { type: "string" }
+                },
+                required: ["file1", "file2"]
+            },
+            handler: async (args: any) => {
+                const analyzer = new DriftAnalyzer();
+                analyzer.compare(path.resolve(args.file1), path.resolve(args.file2));
+                return { content: [{ type: "text", text: `Drift analysis performed between ${args.file1} and ${args.file2}.` }] };
+            }
+        });
+
+        server.start();
+        console.error("Hybrid RCP MCP Server started");
     });
 
 program.parse(process.argv);

@@ -55,7 +55,7 @@ export interface Conflict {
     line: number;
   };
   severity: 'error' | 'warning' | 'info';
-  category: 'missing-file' | 'ownership-conflict' | 'version-mismatch'; // Categorization for AI
+  category: 'missing-file' | 'ownership-conflict' | 'version-mismatch' | 'security' | 'quality'; // Categorization for AI
   suggestedFix?: string; // Specific suggestion (e.g., 'Wrap in Arc<Mutex<T>>')
 }
 

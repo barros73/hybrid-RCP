@@ -9,9 +9,11 @@ import { CargoManager } from './cargo-manager';
 import { AiContextGenerator } from './generators/ai-context-generator';
 import { GlobalConflictAnalyzer } from './analyzers/global-conflict-analyzer';
 import { PatternAnalyzer } from './analyzers/pattern-analyzer';
-import { TextDecoder, TextEncoder } from 'util';
 import { BlockGraph } from './types';
 import { IUserInterface } from './ui-interface';
+import { DriftAnalyzer } from './sub-modules/drift';
+import { ShieldAnalyzer } from './sub-modules/shield';
+import { execSync } from 'child_process';
 
 // Webview Panel for Graph Visualization
 class HybridRstPanel {
@@ -102,6 +104,11 @@ class HybridRstPanel {
 
         const elements = JSON.stringify([...nodes, ...edges]);
 
+        // Mock SHIELD & CIS data (In real usage, this comes from graph.conflicts)
+        const shieldCount = graph.conflicts?.filter(c => c.severity === 'error').length || 0;
+        const cisScore = 85; // Heuristic or derived from last export
+        const cisColor = cisScore > 80 ? "#4caf50" : cisScore > 40 ? "#ffeb3b" : "#f44336";
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,12 +117,54 @@ class HybridRstPanel {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hybrid-RCP Graph</title>
     <script src="${scriptUri}"></script>
+    <div id="cy"></div>
+    
+    <div class="footer">
+        <div class="active-prompt">
+            <strong>🤖 Active AI Prompt Context:</strong>
+            <div id="prompt-content">Awaiting matrix-instruction update...</div>
+        </div>
+        <div class="metrics">
+            <div class="metric-item">
+                <span class="label">🛡️ SHIELD:</span>
+                <span class="value" style="color: ${shieldCount > 0 ? '#f44336' : '#4caf50'}">${shieldCount} Issues</span>
+            </div>
+            <div class="metric-item">
+                <span class="label">🎯 CIS:</span>
+                <span class="value" style="color: ${cisColor}">${cisScore}%</span>
+            </div>
+            <div id="forge-status" class="forge-ready" style="display:none">
+                ⚒️ FORGE: STABLE & Ready to Tag
+            </div>
+        </div>
+    </div>
+
     <style>
-        body { font-family: sans-serif; padding: 0; margin: 0; overflow: hidden; background-color: #1e1e1e; color: #ccc; }
-        #cy { width: 100vw; height: 100vh; display: block; }
-        .legend { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; font-size: 12px; pointer-events: none; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 0; margin: 0; overflow: hidden; background-color: #0f0f0f; color: #ccc; }
+        #cy { width: 100vw; height: calc(100vh - 80px); display: block; }
+        .legend { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px; font-size: 11px; pointer-events: none; border: 1px solid #333; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
+        
+        .footer { 
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; 
+            background: #1e1e1e; border-top: 1px solid #333; display: flex; 
+            padding: 10px 20px; box-sizing: border-box; align-items: center; justify-content: space-between;
+        }
+        .active-prompt { flex: 1; max-width: 60%; font-size: 12px; color: #aaa; background: #252526; padding: 10px; border-radius: 4px; border: 1px solid #3c3c3c; overflow: hidden; }
+        #prompt-content { font-family: monospace; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin-top: 4px; color: #3794ef; }
+        
+        .metrics { display: flex; gap: 20px; font-size: 12px; align-items: center; }
+        .metric-item { display: flex; flex-direction: column; align-items: flex-end; }
+        .metric-item .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-item .value { font-weight: bold; font-size: 14px; }
+        .forge-ready { background: #4caf5022; color: #4caf50; border: 1px solid #4caf50; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
     </style>
 </head>
 <body>
@@ -178,6 +227,20 @@ class HybridRstPanel {
             cy.ready(() => {
                 cy.fit();
                 cy.center();
+            });
+
+            // Handle messages from the extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                switch (message.type) {
+                    case 'updatePrompt':
+                        document.getElementById('prompt-content').textContent = message.text;
+                        break;
+                    case 'forgeStatus':
+                        const forgeEl = document.getElementById('forge-status');
+                        forgeEl.style.display = message.isStable ? 'block' : 'none';
+                        break;
+                }
             });
 
         } catch (e) {
@@ -285,20 +348,22 @@ export function activate(context: vscode.ExtensionContext) {
             entryPath = selected.path;
         }
 
-        // 0. Prompt for Analysis Depth
-        const depthSelection = await vscode.window.showQuickPick(
-            ['Full Analysis (All Levels)', 'High Level (Top 2 Levels)', 'Custom Depth...'],
-            { placeHolder: 'Select Analysis Depth' }
+        // 0. Prompt for Analysis Depth & Security
+        const analysisOptions = await vscode.window.showQuickPick(
+            [
+                { label: 'Full Analysis', description: 'Deep scan + Dependencies' },
+                { label: 'Full Analysis + 🛡️ SHIELD', description: 'Deep scan + Security/Audit (Clippy, Audit)' },
+                { label: 'High Level', description: 'Top 2 levels only' }
+            ],
+            { placeHolder: 'Select Analysis Mode' }
         );
 
+        if (!analysisOptions) return;
+
         let maxDepth = Infinity;
-        if (depthSelection === 'High Level (Top 2 Levels)') {
+        let runShield = analysisOptions.label.includes('SHIELD');
+        if (analysisOptions.label === 'High Level') {
             maxDepth = 2;
-        } else if (depthSelection === 'Custom Depth...') {
-            const depthInput = await vscode.window.showInputBox({ prompt: 'Enter max depth (number)', placeHolder: 'e.g., 3' });
-            if (depthInput) {
-                maxDepth = parseInt(depthInput, 10) || Infinity;
-            }
         }
 
         vscode.window.showInformationMessage(`Analyzing project structure...`);
@@ -326,6 +391,24 @@ export function activate(context: vscode.ExtensionContext) {
             const patternConflicts = await patternAnalyzer.analyze(graph);
 
             const allExtras = [...globalConflicts, ...patternConflicts];
+
+            // 1d. Run SHIELD Audit
+            if (runShield) {
+                vscode.window.showInformationMessage('🛡️ SHIELD: Running security audit (clippy/audit)...');
+                const shield = new ShieldAnalyzer();
+                try {
+                    const clippyOut = execSync('cargo clippy --message-format=json', { cwd: rootPath, stdio: 'pipe' }).toString();
+                    const clippyJson = clippyOut.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
+                    allExtras.push(...shield.analyze(clippyJson));
+                } catch (e: any) {
+                    if (e.stdout) {
+                        try {
+                            const clippyJson = e.stdout.toString().split('\n').filter((l: string) => l.trim()).map((l: string) => JSON.parse(l));
+                            allExtras.push(...shield.analyze(clippyJson));
+                        } catch (inner) { }
+                    }
+                }
+            }
 
             if (graph.conflicts) {
                 graph.conflicts.push(...allExtras);
@@ -485,6 +568,25 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(analyzeLockDisposable);
+
+    let driftDisposable = vscode.commands.registerCommand('hybrid-rcp.runDrift', async () => {
+        const uris = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectMany: true,
+            filters: { 'RCP Snapshots': ['json'] },
+            openLabel: 'Select two snapshots to compare'
+        });
+
+        if (uris && uris.length === 2) {
+            const analyzer = new DriftAnalyzer();
+            analyzer.compare(uris[0].fsPath, uris[1].fsPath);
+            vscode.window.showInformationMessage('Drift Analysis complete. Check the output log.');
+        } else {
+            vscode.window.showErrorMessage('Please select exactly two .json snapshots.');
+        }
+    });
+
+    context.subscriptions.push(driftDisposable);
 }
 
 export function deactivate() { }

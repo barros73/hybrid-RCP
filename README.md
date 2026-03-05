@@ -1,4 +1,4 @@
-# Hybrid-RCP: v0.6.1 - 2026-03-04
+# Hybrid-RCP: v0.6.2 - 2026-03-05
 ## Visual & Semantic Orchestration (Rust, C++, Python, C, Go, JS)
 
 **The missing link between Static Analysis and Architectural Clarity.**
@@ -149,7 +149,12 @@ Executes a highly-focused, granular architectural check on a specific file or mo
   - `--context`: Generates an AI-optimized `project-context.md` locally inside `.hybrid/`.
 - **Example**: `hybrid-rcp analyze src/lib.rs --context`
 
-#### 4. `create` (The Scaffolder)
+#### 4. `drift` (The History Auditor)
+Compares two RCP snapshots to detect architectural drift.
+- **Action**: Identifies added, removed, or changed nodes (via logicHash) between different stages of the project.
+- **Example**: `hybrid-rcp drift old.json new.json`
+
+#### 5. `create` (The Scaffolder)
 Safely engineers boilerplate logic.
 - **Action**: Instantiates a new file or folder (`mod.rs`) construct while guaranteeing that the parent files are securely updated with the proper export statements, preventing orphan code logic.
 - **Example**: `hybrid-rcp create src/network handler file`
