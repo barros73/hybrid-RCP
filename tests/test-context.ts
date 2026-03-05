@@ -1,12 +1,12 @@
-import { JavascriptParser } from './src/parsers/js-parser';
-import { GraphBuilder } from './src/graph-builder';
-import { AiContextGenerator } from './src/generators/ai-context-generator';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { JavascriptParser } from '../src/parsers/js-parser';
+import { GraphBuilder } from '../src/graph-builder';
+import { AiContextGenerator } from '../src/generators/ai-context-generator';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running AI Context Generator Test...');
-    const mainPath = path.join(process.cwd(), 'test-workspace-context', 'main.ts');
+    const mainPath = path.join(process.cwd(), 'tests', 'test-workspace-context', 'main.ts');
 
     // 1. Parse
     const parser = new JavascriptParser(nodeFileSystem);

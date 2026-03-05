@@ -1,12 +1,12 @@
 
-import { RustParser } from './src/parsers/rust-parser';
-import { nodeFileSystem } from './src/utils/filesystem';
-import { GraphBuilder } from './src/graph-builder';
+import { RustParser } from '../src/parsers/rust-parser';
+import { nodeFileSystem } from '../src/utils/filesystem';
+import { GraphBuilder } from '../src/graph-builder';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running test suite...');
-    const libPath = path.join(process.cwd(), 'test-workspace', 'src', 'lib.rs');
+    const libPath = path.join(process.cwd(), 'tests', 'test-workspace', 'src', 'lib.rs');
 
     console.log(`Parsing: ${libPath}`);
     const parser = new RustParser(nodeFileSystem);

@@ -32,7 +32,7 @@ export class GlobalConflictAnalyzer {
         });
 
         // Detect Duplicates (Structs/Classes)
-        structMap.forEach((nodes, name) => {
+        for (const [name, nodes] of structMap.entries()) {
             if (nodes.length > 1) {
                 // Determine severity based on language
                 const isCppOrC = nodes.some(n => n.filePath?.endsWith('.c') || n.filePath?.endsWith('.cpp') || n.filePath?.endsWith('.h'));
@@ -48,10 +48,10 @@ export class GlobalConflictAnalyzer {
                         : `Consider renaming to avoid confusion.`
                 });
             }
-        });
+        }
 
         // Detect Duplicates (Functions)
-        functionMap.forEach((nodes, name) => {
+        for (const [name, nodes] of functionMap.entries()) {
             if (nodes.length > 1) {
                 const isCppOrC = nodes.some(n => n.filePath?.endsWith('.c') || n.filePath?.endsWith('.cpp'));
 
@@ -66,7 +66,7 @@ export class GlobalConflictAnalyzer {
                         : `Consider renaming to avoid shadowing.`
                 });
             }
-        });
+        }
 
         // 3. Detect Circular Dependencies (A -> B -> A)
         // Using a DFS approach on the edges
@@ -156,12 +156,14 @@ export class GlobalConflictAnalyzer {
         });
 
         // 5. Detect Dead Code (Orphan Nodes)
-        // Nodes with 0 incoming edges (excluding entry points)
+        // Nodes with 0 incoming non-ownership edges (excluding entry points)
         const incomingEdges = new Map<string, number>();
         graph.nodes.forEach(n => incomingEdges.set(n.id, 0));
         graph.edges.forEach(e => {
-            const count = incomingEdges.get(e.to) || 0;
-            incomingEdges.set(e.to, count + 1);
+            if (e.type !== 'ownership') {
+                const count = incomingEdges.get(e.to) || 0;
+                incomingEdges.set(e.to, count + 1);
+            }
         });
 
         graph.nodes.forEach(node => {
@@ -173,8 +175,8 @@ export class GlobalConflictAnalyzer {
             const isEntryPoint = ['main', 'lib', 'index', 'app', 'cli'].some(k => node.name.toLowerCase().includes(k));
             const isSpecial = node.name.startsWith('mod') || node.name === '__init__';
 
-            // Only report if it's a file node
-            if (incoming === 0 && !isEntryPoint && !isSpecial && node.type === 'file') {
+            // Only report if it's a file node or core (which implies file module)
+            if (incoming === 0 && !isEntryPoint && !isSpecial && (node.type === 'file' || node.type === 'core')) {
                 conflicts.push({
                     id: `dead-code-${node.name}`,
                     description: `Potential Orphan Module: '${node.name}' has 0 incoming dependencies.`,

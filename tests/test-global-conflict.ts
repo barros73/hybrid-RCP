@@ -1,13 +1,13 @@
 
-import { HybridManager } from './src/parsers/hybrid-manager';
-import { GlobalConflictAnalyzer } from './src/analyzers/global-conflict-analyzer';
-import { GraphBuilder } from './src/graph-builder';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { HybridManager } from '../src/parsers/hybrid-manager';
+import { GlobalConflictAnalyzer } from '../src/analyzers/global-conflict-analyzer';
+import { GraphBuilder } from '../src/graph-builder';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running Global Conflict Test...');
-    const rootPath = path.join(process.cwd(), 'test-workspace-global');
+    const rootPath = path.join(process.cwd(), 'tests', 'test-workspace-global');
 
     // 1. Parse (Hybrid)
     const manager = new HybridManager(nodeFileSystem);

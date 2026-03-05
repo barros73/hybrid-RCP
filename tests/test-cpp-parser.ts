@@ -1,10 +1,10 @@
-import { CppParser } from './src/parsers/cpp-parser';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { CppParser } from '../src/parsers/cpp-parser';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running C++ Parser Test...');
-    const mainPath = path.join(process.cwd(), 'test-workspace-cpp', 'main.cpp');
+    const mainPath = path.join(process.cwd(), 'tests', 'test-workspace-cpp', 'main.cpp');
 
     console.log(`Parsing: ${mainPath}`);
     const parser = new CppParser(nodeFileSystem);

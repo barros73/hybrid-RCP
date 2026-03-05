@@ -1,5 +1,6 @@
 
-import { RustParser, IFileSystem } from './src/rust-parser';
+import { RustParser } from '../src/parsers/rust-parser';
+import { IFileSystem } from '../src/utils/filesystem';
 import * as assert from 'assert';
 
 // Mock File System

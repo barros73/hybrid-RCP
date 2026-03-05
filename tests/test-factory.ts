@@ -1,8 +1,8 @@
-import { ParserFactory } from './src/parsers/factory';
-import { nodeFileSystem } from './src/utils/filesystem';
-import { RustParser } from './src/parsers/rust-parser';
-import { CppParser } from './src/parsers/cpp-parser';
-import { PythonParser } from './src/parsers/python-parser';
+import { ParserFactory } from '../src/parsers/factory';
+import { nodeFileSystem } from '../src/utils/filesystem';
+import { RustParser } from '../src/parsers/rust-parser';
+import { CppParser } from '../src/parsers/cpp-parser';
+import { PythonParser } from '../src/parsers/python-parser';
 
 function runTest() {
     console.log('Running Factory Test...');

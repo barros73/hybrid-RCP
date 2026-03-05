@@ -1,10 +1,10 @@
-import { HybridManager } from './src/parsers/hybrid-manager';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { HybridManager } from '../src/parsers/hybrid-manager';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running Hybrid Manager Test...');
-    const rootPath = path.join(process.cwd(), 'test-workspace-hybrid');
+    const rootPath = path.join(process.cwd(), 'tests', 'test-workspace-hybrid');
 
     console.log(`Analyzing Workspace: ${rootPath}`);
     const manager = new HybridManager(nodeFileSystem);
