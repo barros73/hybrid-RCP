@@ -1,14 +1,14 @@
 
-import { HybridManager } from './src/parsers/hybrid-manager';
-import { PatternAnalyzer } from './src/analyzers/pattern-analyzer';
-import { GlobalConflictAnalyzer } from './src/analyzers/global-conflict-analyzer';
-import { GraphBuilder } from './src/graph-builder';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { HybridManager } from '../src/parsers/hybrid-manager';
+import { PatternAnalyzer } from '../src/analyzers/pattern-analyzer';
+import { GlobalConflictAnalyzer } from '../src/analyzers/global-conflict-analyzer';
+import { GraphBuilder } from '../src/graph-builder';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running Pattern Analyzer Test...');
-    const rootPath = path.join(process.cwd(), 'test-workspace-patterns');
+    const rootPath = path.join(process.cwd(), 'tests', 'test-workspace-patterns');
 
     // 1. Parse
     const manager = new HybridManager(nodeFileSystem);

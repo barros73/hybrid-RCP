@@ -1,10 +1,10 @@
-import { PythonParser } from './src/parsers/python-parser';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { PythonParser } from '../src/parsers/python-parser';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running Python Parser Test...');
-    const mainPath = path.join(process.cwd(), 'test-workspace-python', 'main.py');
+    const mainPath = path.join(process.cwd(), 'tests', 'test-workspace-python', 'main.py');
 
     console.log(`Parsing: ${mainPath}`);
     const parser = new PythonParser(nodeFileSystem);

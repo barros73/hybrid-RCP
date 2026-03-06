@@ -50,7 +50,7 @@ export class HybridManager {
         for (const item of rootFiles) {
             if (!item.isDirectory()) {
                 const ext = path.extname(item.name).toLowerCase();
-                if (['.rs', '.ts', '.js', '.py'].includes(ext)) {
+                if (['.rs', '.ts', '.js', '.py', '.c', '.cpp', '.h', '.hpp', '.go'].includes(ext)) {
                     const p = path.join(rootPath, item.name);
                     if (!entryPoints.includes(p)) entryPoints.push(p);
                 }

@@ -1,10 +1,10 @@
-import { GoParser } from './src/parsers/go-parser';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { GoParser } from '../src/parsers/go-parser';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running Go Parser Test...');
-    const mainPath = path.join(process.cwd(), 'test-workspace-go', 'main.go');
+    const mainPath = path.join(process.cwd(), 'tests', 'test-workspace-go', 'main.go');
 
     console.log(`Parsing: ${mainPath}`);
     const parser = new GoParser(nodeFileSystem);

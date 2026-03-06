@@ -1,10 +1,10 @@
-import { CParser } from './src/parsers/c-parser';
-import { nodeFileSystem } from './src/utils/filesystem';
+import { CParser } from '../src/parsers/c-parser';
+import { nodeFileSystem } from '../src/utils/filesystem';
 import * as path from 'path';
 
 async function runTest() {
     console.log('Running C Parser Test...');
-    const mainPath = path.join(process.cwd(), 'test-workspace-c', 'main.c');
+    const mainPath = path.join(process.cwd(), 'tests', 'test-workspace-c', 'main.c');
 
     console.log(`Parsing: ${mainPath}`);
     const parser = new CParser(nodeFileSystem);
